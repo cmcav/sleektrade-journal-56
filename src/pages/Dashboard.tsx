@@ -19,7 +19,7 @@ const Dashboard = () => {
 
           <div className="space-y-8">
             <DashboardSummary />
-            <TradeList />
+            <TradeList newTrade={null} />
           </div>
         </main>
       </PageTransition>
