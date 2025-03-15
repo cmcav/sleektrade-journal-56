@@ -9,12 +9,16 @@ import {
   LineChart,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,12 +34,23 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
   }, [location]);
 
+  // Define nav items based on authentication status
   const navItems = [
     { path: "/", label: "Home", icon: <Home className="w-5 h-5" /> },
-    { path: "/dashboard", label: "Dashboard", icon: <BarChart4 className="w-5 h-5" /> },
-    { path: "/trades", label: "Trades", icon: <LineChart className="w-5 h-5" /> },
-    { path: "/analytics", label: "Analytics", icon: <BarChart4 className="w-5 h-5" /> },
   ];
+
+  // Add authenticated-only nav items
+  if (user) {
+    navItems.push(
+      { path: "/dashboard", label: "Dashboard", icon: <BarChart4 className="w-5 h-5" /> },
+      { path: "/trades", label: "Trades", icon: <LineChart className="w-5 h-5" /> },
+      { path: "/analytics", label: "Analytics", icon: <BarChart4 className="w-5 h-5" /> }
+    );
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <header
@@ -81,6 +96,29 @@ export function Navbar() {
 
         <div className="flex items-center space-x-4">
           <ThemeToggle />
+          
+          {user && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="hidden md:flex items-center space-x-1"
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              <span>Logout</span>
+            </Button>
+          )}
+
+          {!user && (
+            <div className="hidden md:flex items-center space-x-2">
+              <NavLink to="/auth">
+                <Button variant="outline" size="sm">Login</Button>
+              </NavLink>
+              <NavLink to="/auth">
+                <Button size="sm">Sign Up</Button>
+              </NavLink>
+            </div>
+          )}
           
           {/* Mobile Menu Button */}
           <button
@@ -129,6 +167,39 @@ export function Navbar() {
                 </NavLink>
               </motion.div>
             ))}
+            
+            {user && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: navItems.length * 0.05 }}
+              >
+                <Button
+                  variant="ghost"
+                  className="flex items-center space-x-2 w-full justify-start p-3"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Logout</span>
+                </Button>
+              </motion.div>
+            )}
+            
+            {!user && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: navItems.length * 0.05 }}
+                className="flex flex-col space-y-2 pt-2"
+              >
+                <NavLink to="/auth">
+                  <Button variant="outline" className="w-full">Login</Button>
+                </NavLink>
+                <NavLink to="/auth">
+                  <Button className="w-full">Sign Up</Button>
+                </NavLink>
+              </motion.div>
+            )}
           </nav>
         </motion.div>
       )}

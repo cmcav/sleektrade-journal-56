@@ -4,8 +4,11 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight, BarChart4, LineChart, TrendingUp } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const Index = () => {
+  const { user } = useAuth();
+  
   const features = [
     {
       icon: <LineChart className="w-6 h-6" />,
@@ -34,9 +37,20 @@ const Index = () => {
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            <NavLink to="/dashboard">
-              <Button variant="outline">Dashboard</Button>
-            </NavLink>
+            {user ? (
+              <NavLink to="/dashboard">
+                <Button variant="outline">Dashboard</Button>
+              </NavLink>
+            ) : (
+              <div className="flex space-x-2">
+                <NavLink to="/auth">
+                  <Button variant="outline">Login</Button>
+                </NavLink>
+                <NavLink to="/auth">
+                  <Button>Sign Up</Button>
+                </NavLink>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -83,16 +97,27 @@ const Index = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.5 }}
           >
-            <NavLink to="/dashboard">
-              <Button size="lg" className="w-full sm:w-auto">
-                Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </NavLink>
-            <NavLink to="/trades">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Record Trades
-              </Button>
-            </NavLink>
+            {user ? (
+              <NavLink to="/dashboard">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </NavLink>
+            ) : (
+              <NavLink to="/auth">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </NavLink>
+            )}
+            
+            {user && (
+              <NavLink to="/trades">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                  Record Trades
+                </Button>
+              </NavLink>
+            )}
           </motion.div>
         </motion.div>
 
