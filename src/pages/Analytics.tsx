@@ -25,30 +25,47 @@ import {
   ChartTooltip,
   ChartTooltipContent
 } from "@/components/ui/chart";
+import { format } from "date-fns";
 
 const Analytics = () => {
   const { trades, analytics, isLoading } = useTradeData();
   const { theme } = useTheme();
   
-  // Generate performance data for chart
+  // Generate performance data from actual trades
   const generatePerformanceData = () => {
-    // In a real app, this would aggregate actual trade data
-    // This is just sample data for the demo
-    return [
-      { date: "Jan", pnl: 120 },
-      { date: "Feb", pnl: -50 },
-      { date: "Mar", pnl: 200 },
-      { date: "Apr", pnl: 80 },
-      { date: "May", pnl: -30 },
-      { date: "Jun", pnl: 150 },
-      { date: "Jul", pnl: 220 },
-    ];
+    if (trades.length === 0) return [];
+    
+    // Sort trades by date
+    const sortedTrades = [...trades].sort((a, b) => 
+      new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
+    );
+    
+    // Group trades by month for visualization
+    const tradesByMonth: Record<string, number> = {};
+    
+    sortedTrades.forEach(trade => {
+      const date = new Date(trade.entryDate);
+      const monthYear = format(date, 'MMM yyyy');
+      
+      if (!tradesByMonth[monthYear]) {
+        tradesByMonth[monthYear] = 0;
+      }
+      
+      tradesByMonth[monthYear] += trade.pnl;
+    });
+    
+    // Transform to chart data format
+    return Object.entries(tradesByMonth).map(([date, pnl]) => ({
+      date,
+      pnl: Number(pnl.toFixed(2))
+    }));
   };
 
   // Generate strategy performance for pie chart
   const generateStrategyData = () => {
     const strategies = trades.reduce((acc, trade) => {
-      acc[trade.strategy] = (acc[trade.strategy] || 0) + trade.pnl;
+      const strategy = trade.strategy || 'Undefined';
+      acc[strategy] = (acc[strategy] || 0) + trade.pnl;
       return acc;
     }, {} as Record<string, number>);
 
@@ -69,6 +86,10 @@ const Analytics = () => {
     const sign = actualPnl >= 0 ? "+" : "";
     return [`${sign}$${actualPnl.toFixed(2)}`, name];
   };
+
+  // Format trades for display
+  const performanceData = generatePerformanceData();
+  const strategyData = generateStrategyData();
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,48 +120,56 @@ const Analytics = () => {
                   <h2 className="text-xl font-semibold">Performance Over Time</h2>
                 </div>
                 <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={generatePerformanceData()}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#333" : "#eee"} />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fill: theme === "dark" ? "#aaa" : "#333" }}
-                        tickMargin={10}
-                      />
-                      <YAxis 
-                        tick={{ fill: theme === "dark" ? "#aaa" : "#333" }}
-                        tickFormatter={(value) => `$${value}`}
-                        width={60}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: theme === "dark" ? "#222" : "#fff",
-                          borderColor: theme === "dark" ? "#333" : "#eee",
-                          color: theme === "dark" ? "#fff" : "#333",
-                          padding: "10px",
-                          borderRadius: "4px"
-                        }}
-                        formatter={(value: number) => [`$${value}`, "P&L"]}
-                        labelStyle={{ fontWeight: "bold", marginBottom: "5px" }}
-                      />
-                      <defs>
-                        <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                        </linearGradient>
-                      </defs>
-                      <Area 
-                        type="monotone" 
-                        dataKey="pnl" 
-                        stroke="hsl(var(--primary))" 
-                        fillOpacity={1} 
-                        fill="url(#pnlGradient)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {performanceData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={performanceData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#333" : "#eee"} />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fill: theme === "dark" ? "#aaa" : "#333" }}
+                          tickMargin={10}
+                          height={60}
+                          padding={{ left: 10, right: 10 }}
+                        />
+                        <YAxis 
+                          tick={{ fill: theme === "dark" ? "#aaa" : "#333" }}
+                          tickFormatter={(value) => `$${value}`}
+                          width={80}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: theme === "dark" ? "#222" : "#fff",
+                            borderColor: theme === "dark" ? "#333" : "#eee",
+                            color: theme === "dark" ? "#fff" : "#333",
+                            padding: "10px",
+                            borderRadius: "4px"
+                          }}
+                          formatter={(value: number) => [`$${value.toFixed(2)}`, "P&L"]}
+                          labelStyle={{ fontWeight: "bold", marginBottom: "5px" }}
+                        />
+                        <defs>
+                          <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                          </linearGradient>
+                        </defs>
+                        <Area 
+                          type="monotone" 
+                          dataKey="pnl" 
+                          stroke="hsl(var(--primary))" 
+                          fillOpacity={1} 
+                          fill="url(#pnlGradient)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <p className="text-muted-foreground">No trade data available</p>
+                    </div>
+                  )}
                 </div>
               </Card>
 
@@ -153,43 +182,51 @@ const Analytics = () => {
                   </div>
                   
                   <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={generateStrategyData()}
-                          cx="50%"
-                          cy="45%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
-                          dataKey="value"
-                          nameKey="name"
-                        >
-                          {generateStrategyData().map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.fill || COLORS[index % COLORS.length]} 
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={strategyTooltipFormatter}
-                          contentStyle={{ 
-                            backgroundColor: theme === "dark" ? "#222" : "#fff",
-                            borderColor: theme === "dark" ? "#333" : "#eee",
-                            color: theme === "dark" ? "#fff" : "#333",
-                            padding: "8px",
-                            borderRadius: "4px"
-                          }}
-                        />
-                        <Legend 
-                          layout="horizontal" 
-                          verticalAlign="bottom" 
-                          align="center"
-                          wrapperStyle={{ paddingTop: "20px" }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    {strategyData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 30 }}>
+                          <Pie
+                            data={strategyData}
+                            cx="50%"
+                            cy="45%"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={5}
+                            dataKey="value"
+                            nameKey="name"
+                            label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {strategyData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.fill || COLORS[index % COLORS.length]} 
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={strategyTooltipFormatter}
+                            contentStyle={{ 
+                              backgroundColor: theme === "dark" ? "#222" : "#fff",
+                              borderColor: theme === "dark" ? "#333" : "#eee",
+                              color: theme === "dark" ? "#fff" : "#333",
+                              padding: "8px",
+                              borderRadius: "4px"
+                            }}
+                          />
+                          <Legend 
+                            layout="horizontal" 
+                            verticalAlign="bottom" 
+                            align="center"
+                            wrapperStyle={{ paddingTop: "20px" }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <p className="text-muted-foreground">No strategy data available</p>
+                      </div>
+                    )}
                   </div>
                 </Card>
 
