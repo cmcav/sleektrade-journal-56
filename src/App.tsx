@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Trades from "./pages/Trades";
 import Analytics from "./pages/Analytics";
+import AIStrategies from "./pages/AIStrategies";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/trades" element={<Trades />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/ai-strategies" element={<AIStrategies />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

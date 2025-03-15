@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   LogOut,
+  Brain,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,8 @@ export function Navbar() {
     navItems.push(
       { path: "/dashboard", label: "Dashboard", icon: <BarChart4 className="w-5 h-5" /> },
       { path: "/trades", label: "Trades", icon: <LineChart className="w-5 h-5" /> },
-      { path: "/analytics", label: "Analytics", icon: <BarChart4 className="w-5 h-5" /> }
+      { path: "/analytics", label: "Analytics", icon: <BarChart4 className="w-5 h-5" /> },
+      { path: "/ai-strategies", label: "AI Strategies", icon: <Brain className="w-5 h-5" /> }
     );
   }
 
