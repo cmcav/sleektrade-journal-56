@@ -1,10 +1,20 @@
 
+import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { TradeForm } from "@/components/trades/TradeForm";
 import { TradeList } from "@/components/trades/TradeList";
+import { Trade } from "@/hooks/useTradeData";
 
 const Trades = () => {
+  // Create shared state to track trades added in the current session
+  const [recentlyAddedTrade, setRecentlyAddedTrade] = useState<Trade | null>(null);
+  
+  // Handler for new trades added
+  const handleTradeAdded = (newTrade: Trade) => {
+    setRecentlyAddedTrade(newTrade);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -18,8 +28,8 @@ const Trades = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            <TradeForm />
-            <TradeList />
+            <TradeForm onTradeAdded={handleTradeAdded} />
+            <TradeList newTrade={recentlyAddedTrade} />
           </div>
         </main>
       </PageTransition>

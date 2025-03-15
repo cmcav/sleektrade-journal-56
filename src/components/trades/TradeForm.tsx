@@ -13,10 +13,14 @@ import {
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { useTradeData } from "@/hooks/useTradeData";
+import { useTradeData, Trade } from "@/hooks/useTradeData";
 import { motion } from "framer-motion";
 
-export function TradeForm() {
+interface TradeFormProps {
+  onTradeAdded?: (trade: Trade) => void;
+}
+
+export function TradeForm({ onTradeAdded }: TradeFormProps) {
   const { addTrade } = useTradeData();
   const { toast } = useToast();
 
@@ -54,6 +58,11 @@ export function TradeForm() {
       });
 
       if (newTrade) {
+        // Invoke the callback with the new trade to update the parent component
+        if (onTradeAdded) {
+          onTradeAdded(newTrade);
+        }
+        
         toast({
           title: "Trade added",
           description: `Successfully added ${newTrade.symbol} trade with ${newTrade.pnl > 0 ? "profit" : "loss"} of $${Math.abs(newTrade.pnl).toFixed(2)}`,

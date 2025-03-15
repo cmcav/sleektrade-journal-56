@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useTradeData, Trade } from "@/hooks/useTradeData";
@@ -12,12 +12,31 @@ import { motion, AnimatePresence } from "framer-motion";
 type SortField = "symbol" | "entryDate" | "pnl" | "strategy";
 type SortOrder = "asc" | "desc";
 
-export function TradeList() {
-  const { trades, deleteTrade, isLoading } = useTradeData();
+interface TradeListProps {
+  newTrade: Trade | null;
+}
+
+export function TradeList({ newTrade }: TradeListProps) {
+  const { trades: fetchedTrades, deleteTrade, isLoading } = useTradeData();
   const { toast } = useToast();
   const [sortField, setSortField] = useState<SortField>("entryDate");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  
+  // Update trades when data is fetched
+  useEffect(() => {
+    if (fetchedTrades) {
+      setTrades(fetchedTrades);
+    }
+  }, [fetchedTrades]);
+  
+  // Update trades when a new trade is added
+  useEffect(() => {
+    if (newTrade && !trades.some(trade => trade.id === newTrade.id)) {
+      setTrades(prevTrades => [newTrade, ...prevTrades]);
+    }
+  }, [newTrade, trades]);
 
   if (isLoading) {
     return (
@@ -73,6 +92,8 @@ export function TradeList() {
 
   const handleDelete = (trade: Trade) => {
     deleteTrade(trade.id);
+    // Update local state immediately to reflect the deletion
+    setTrades(prevTrades => prevTrades.filter(t => t.id !== trade.id));
     toast({
       title: "Trade deleted",
       description: `${trade.symbol} trade has been removed from your journal`,
