@@ -30,7 +30,7 @@ export function TradeForm() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -40,7 +40,7 @@ export function TradeForm() {
         throw new Error("Please fill in all required fields");
       }
 
-      const newTrade = addTrade({
+      const newTrade = await addTrade({
         symbol: symbol.toUpperCase(),
         entryPrice: parseFloat(entryPrice),
         exitPrice: parseFloat(exitPrice),
@@ -53,21 +53,23 @@ export function TradeForm() {
         notes,
       });
 
-      toast({
-        title: "Trade added",
-        description: `Successfully added ${newTrade.symbol} trade with ${newTrade.pnl > 0 ? "profit" : "loss"} of $${Math.abs(newTrade.pnl).toFixed(2)}`,
-        variant: newTrade.pnl > 0 ? "default" : "destructive",
-      });
+      if (newTrade) {
+        toast({
+          title: "Trade added",
+          description: `Successfully added ${newTrade.symbol} trade with ${newTrade.pnl > 0 ? "profit" : "loss"} of $${Math.abs(newTrade.pnl).toFixed(2)}`,
+          variant: newTrade.pnl > 0 ? "default" : "destructive",
+        });
 
-      // Reset form
-      setSymbol("");
-      setEntryPrice("");
-      setExitPrice("");
-      setQuantity("");
-      setType("buy");
-      setStrategy("");
-      setTags("");
-      setNotes("");
+        // Reset form
+        setSymbol("");
+        setEntryPrice("");
+        setExitPrice("");
+        setQuantity("");
+        setType("buy");
+        setStrategy("");
+        setTags("");
+        setNotes("");
+      }
     } catch (error) {
       toast({
         title: "Error",

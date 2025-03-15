@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -174,7 +173,7 @@ export function useTradeData() {
     }
   };
 
-  const addTrade = async (trade: Omit<Trade, "id" | "pnl" | "pnlPercentage">) => {
+  const addTrade = async (trade: Omit<Trade, "id" | "pnl" | "pnlPercentage">): Promise<Trade | null> => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -225,7 +224,7 @@ export function useTradeData() {
         entryDate: data.entry_date,
         exitDate: data.exit_date || "",
         quantity: Number(data.quantity),
-        type: data.type,
+        type: data.type as "buy" | "sell",
         strategy: data.strategy || "",
         tags: data.tags || [],
         pnl: Number(data.pnl),
