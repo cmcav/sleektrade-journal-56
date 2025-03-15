@@ -16,8 +16,15 @@ import {
   Tooltip,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Legend
 } from "recharts";
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent
+} from "@/components/ui/chart";
 
 const Analytics = () => {
   const { trades, analytics, isLoading } = useTradeData();
@@ -47,13 +54,22 @@ const Analytics = () => {
 
     return Object.entries(strategies).map(([name, pnl]) => ({
       name,
-      value: pnl,
+      value: Math.abs(pnl), // Using absolute value for pie size
+      actualPnl: pnl, // Keeping the actual value for tooltips
+      fill: pnl >= 0 ? "#4ade80" : "#f43f5e", // Green for profit, red for loss
     }));
   };
 
-  // Colors for pie chart
+  // Colors for pie chart - using more accessible colors
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
   
+  // Custom tooltip formatter for strategy chart
+  const strategyTooltipFormatter = (value: number, name: string, entry: any) => {
+    const actualPnl = entry.payload.actualPnl;
+    const sign = actualPnl >= 0 ? "+" : "";
+    return [`${sign}$${actualPnl.toFixed(2)}`, name];
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -86,24 +102,29 @@ const Analytics = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={generatePerformanceData()}
-                      margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#333" : "#eee"} />
                       <XAxis 
                         dataKey="date" 
-                        tick={{ fill: theme === "dark" ? "#aaa" : "#333" }} 
+                        tick={{ fill: theme === "dark" ? "#aaa" : "#333" }}
+                        tickMargin={10}
                       />
                       <YAxis 
                         tick={{ fill: theme === "dark" ? "#aaa" : "#333" }}
-                        tickFormatter={(value) => `$${value}`} 
+                        tickFormatter={(value) => `$${value}`}
+                        width={60}
                       />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: theme === "dark" ? "#222" : "#fff",
                           borderColor: theme === "dark" ? "#333" : "#eee",
                           color: theme === "dark" ? "#fff" : "#333",
+                          padding: "10px",
+                          borderRadius: "4px"
                         }}
                         formatter={(value: number) => [`$${value}`, "P&L"]}
+                        labelStyle={{ fontWeight: "bold", marginBottom: "5px" }}
                       />
                       <defs>
                         <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
@@ -137,29 +158,35 @@ const Analytics = () => {
                         <Pie
                           data={generateStrategyData()}
                           cx="50%"
-                          cy="50%"
+                          cy="45%"
                           innerRadius={60}
                           outerRadius={90}
-                          fill="#8884d8"
                           paddingAngle={5}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                          labelLine={false}
+                          nameKey="name"
                         >
                           {generateStrategyData().map((entry, index) => (
                             <Cell 
                               key={`cell-${index}`} 
-                              fill={COLORS[index % COLORS.length]} 
+                              fill={entry.fill || COLORS[index % COLORS.length]} 
                             />
                           ))}
                         </Pie>
                         <Tooltip 
-                          formatter={(value: number) => [`$${value.toFixed(2)}`, "P&L"]}
+                          formatter={strategyTooltipFormatter}
                           contentStyle={{ 
                             backgroundColor: theme === "dark" ? "#222" : "#fff",
                             borderColor: theme === "dark" ? "#333" : "#eee",
                             color: theme === "dark" ? "#fff" : "#333",
+                            padding: "8px",
+                            borderRadius: "4px"
                           }}
+                        />
+                        <Legend 
+                          layout="horizontal" 
+                          verticalAlign="bottom" 
+                          align="center"
+                          wrapperStyle={{ paddingTop: "20px" }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
