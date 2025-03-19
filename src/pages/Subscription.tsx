@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { toast } from "sonner";
-import { CreditCard, Calendar, Lock } from "lucide-react";
+import { CreditCard, Calendar, Lock, Check } from "lucide-react";
 
 // Form validation schema
 const formSchema = z.object({
