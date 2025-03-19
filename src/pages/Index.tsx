@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight, BarChart4, LineChart, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { PricingSection } from "@/components/pricing/PricingSection";
 
 const Index = () => {
   const { user } = useAuth();
@@ -163,6 +164,9 @@ const Index = () => {
           ))}
         </motion.div>
       </main>
+
+      {/* Pricing Section */}
+      <PricingSection />
 
       {/* Footer */}
       <footer className="border-t border-border py-6 md:py-8">

@@ -13,6 +13,7 @@ import Analytics from "./pages/Analytics";
 import AIStrategies from "./pages/AIStrategies";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Subscription from "./pages/Subscription";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/ai-strategies" element={<AIStrategies />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/subscription" element={<Subscription />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
