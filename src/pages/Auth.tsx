@@ -22,7 +22,7 @@ export default function Auth() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
-  const { user } = useAuth();
+  const { user, updatePassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -35,7 +35,8 @@ export default function Auth() {
     const errorDescription = hashParams.get('error_description');
     
     if (type === 'recovery') {
-      // Show signin tab when coming from password reset
+      // Show password reset form when coming from password reset link
+      setIsPasswordReset(true);
       setActiveTab("signin");
     }
 
@@ -46,9 +47,10 @@ export default function Auth() {
         title: "Password reset link expired",
         description: "Your password reset link has expired. Please request a new one.",
       });
-      // Clear the URL parameters 
+      // Clear the URL parameters and stay on the sign in page
       window.history.replaceState(null, '', window.location.pathname);
-      navigate('/auth', { replace: true });
+      // Don't show the password reset form if the link is expired
+      setIsPasswordReset(false);
     }
   }, [location, toast, navigate]);
 
@@ -70,10 +72,7 @@ export default function Auth() {
 
     setResetLoading(true);
     try {
-      // In a real implementation, we would call supabase.auth.updateUser() here
-      // with the new password and hash from the URL
-      // For now we just simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await updatePassword(newPassword);
       setResetComplete(true);
       toast({
         title: "Password reset successful",
@@ -129,7 +128,7 @@ export default function Auth() {
     );
   }
 
-  // Password reset form view
+  // Password reset form view - Only shown when user comes from a valid password reset link
   if (isPasswordReset) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -223,7 +222,7 @@ export default function Auth() {
             </TabsList>
             <AnimatePresence mode="wait">
               <TabsContent value="signin" forceMount>
-                {activeTab === "signin" && <SignInForm onResetPassword={() => setIsPasswordReset(true)} />}
+                {activeTab === "signin" && <SignInForm />}
               </TabsContent>
               <TabsContent value="signup" forceMount>
                 {activeTab === "signup" && <SignUpForm />}

@@ -101,6 +101,7 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
                       onResetPassword();
                     } else {
                       setIsForgotPasswordOpen(true);
+                      setResetEmail(email); // Pre-fill with the email if it exists
                     }
                   }}
                 >
@@ -156,7 +157,7 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
             {resetSent && (
               <Alert className="mb-4">
                 <AlertDescription>
-                  If an account exists with that email, we've sent a password reset link.
+                  If an account exists with that email, we've sent a password reset link. Check your inbox and click the link to reset your password.
                 </AlertDescription>
               </Alert>
             )}
@@ -181,9 +182,18 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={resetSent || isResetLoading}>
-                {isResetLoading ? "Sending..." : "Send reset link"}
-              </Button>
+              {!resetSent ? (
+                <Button type="submit" disabled={isResetLoading}>
+                  {isResetLoading ? "Sending..." : "Send reset link"}
+                </Button>
+              ) : (
+                <Button 
+                  type="button" 
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                >
+                  Done
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
