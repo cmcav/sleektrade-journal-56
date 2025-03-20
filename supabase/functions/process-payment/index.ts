@@ -1,7 +1,17 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
   try {
     // Get API keys from environment variables
     const apiLoginId = Deno.env.get("AUTHNET_API_LOGIN_ID");
@@ -15,23 +25,23 @@ serve(async (req) => {
           message: "Authorize.net configuration is missing" 
         }),
         { 
-          headers: { "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500
         }
       );
     }
     
     // Parse request body
-    const { dataDescriptor, dataValue, amount, planType, billingAddress } = await req.json();
+    const { cardData, amount, planType, billingAddress } = await req.json();
     
-    if (!dataDescriptor || !dataValue || !amount) {
+    if (!cardData || !amount) {
       return new Response(
         JSON.stringify({ 
           success: false, 
           message: "Missing required payment information" 
         }),
         { 
-          headers: { "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400
         }
       );
@@ -49,9 +59,10 @@ serve(async (req) => {
           transactionType: "authCaptureTransaction",
           amount: amount.toString(),
           payment: {
-            opaqueData: {
-              dataDescriptor,
-              dataValue
+            creditCard: {
+              cardNumber: cardData.cardNumber,
+              expirationDate: `${cardData.expiryMonth}${cardData.expiryYear}`,
+              cardCode: cardData.cvv
             }
           },
           lineItems: {
@@ -105,7 +116,7 @@ serve(async (req) => {
           transactionId: result.transactionResponse.transId,
           message: "Payment successful"
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
       // Transaction failed
@@ -119,7 +130,7 @@ serve(async (req) => {
           success: false,
           message: errorMessage
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   } catch (error) {
@@ -131,7 +142,7 @@ serve(async (req) => {
         message: "Internal server error"
       }),
       { 
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500
       }
     );

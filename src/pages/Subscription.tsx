@@ -15,6 +15,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { toast } from "sonner";
 import { CreditCard, Calendar, Lock, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 // Form validation schema
 const formSchema = z.object({
@@ -33,23 +34,43 @@ type FormValues = z.infer<typeof formSchema>;
 export default function Subscription() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [planType, setPlanType] = useState<"monthly" | "yearly">("monthly");
-  const [authorizeNetLoaded, setAuthorizeNetLoaded] = useState(false);
+  const [authorizeNetConfig, setAuthorizeNetConfig] = useState<{
+    apiLoginId?: string;
+    signatureKey?: string;
+    environment?: string;
+  }>({});
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Load the Authorize.net Accept.js script
+  // Load Authorize.net configuration
   useEffect(() => {
-    if (!authorizeNetLoaded) {
-      const script = document.createElement('script');
-      script.src = 'https://js.authorize.net/v1/Accept.js'; // Use production URL in production
-      script.async = true;
-      script.onload = () => setAuthorizeNetLoaded(true);
-      document.body.appendChild(script);
-      
-      return () => {
-        document.body.removeChild(script);
-      };
-    }
-  }, [authorizeNetLoaded]);
+    const fetchConfig = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-authnet-config');
+        
+        if (error) {
+          console.error("Error fetching Authorize.net config:", error);
+          toast.error("Unable to connect to payment processor. Please try again later.");
+          return;
+        }
+        
+        if (data && data.success) {
+          setAuthorizeNetConfig({
+            apiLoginId: data.apiLoginId,
+            signatureKey: data.signatureKey,
+            environment: data.environment
+          });
+        } else {
+          toast.error("Payment processor configuration is incomplete.");
+        }
+      } catch (error) {
+        console.error("Failed to fetch payment configuration:", error);
+        toast.error("Unable to connect to payment processor. Please try again later.");
+      }
+    };
+    
+    fetchConfig();
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -65,89 +86,71 @@ export default function Subscription() {
     },
   });
 
-  // Handle form submission with Authorize.net integration
+  // Handle form submission with Authorize.net
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     
     try {
-      if (!window.Accept) {
+      if (!authorizeNetConfig.apiLoginId || !authorizeNetConfig.signatureKey) {
         toast.error("Payment processor not ready. Please try again.");
         setIsSubmitting(false);
         return;
       }
       
+      if (!user) {
+        toast.error("You must be logged in to subscribe");
+        navigate("/auth");
+        return;
+      }
+      
       // Parse expiry date
-      const [expMonth, expYear] = data.expiryDate.split('/');
+      const [expiryMonth, expiryYear] = data.expiryDate.split('/');
       
-      // Create card data object for Authorize.net
-      const secureData = {
-        cardData: {
-          cardNumber: data.cardNumber,
-          month: expMonth,
-          year: '20' + expYear, // Add century prefix
-          cardCode: data.cvv,
-          fullName: data.cardName,
-          zip: data.zipCode
-        }
+      // Prepare card data to send directly to process-payment function
+      const cardData = {
+        cardNumber: data.cardNumber,
+        expiryMonth,
+        expiryYear,
+        cvv: data.cvv
       };
-
-      // Get dispatch token from the edge function
-      const { data: authNetConfig, error: configError } = await supabase.functions.invoke('get-authnet-config');
       
-      if (configError) {
-        console.error("Error fetching Authorize.net config:", configError);
-        toast.error("Unable to connect to payment processor. Please try again later.");
+      // Prepare billing address
+      const billingAddress = {
+        firstName: data.cardName.split(' ')[0],
+        lastName: data.cardName.split(' ').slice(1).join(' '),
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zip: data.zipCode
+      };
+      
+      // Determine subscription amount
+      const amount = planType === "monthly" ? 9.99 : 95.90;
+      
+      // Call our edge function to process the payment
+      const { data: paymentResult, error: paymentError } = await supabase.functions.invoke('process-payment', {
+        body: {
+          cardData,
+          amount,
+          planType,
+          billingAddress
+        }
+      });
+      
+      if (paymentError || (paymentResult && !paymentResult.success)) {
+        console.error("Payment error:", paymentError || (paymentResult && paymentResult.message));
+        toast.error(paymentResult?.message || "There was an error processing your payment. Please try again.");
         setIsSubmitting(false);
         return;
       }
-
-      // Call Authorize.net to tokenize the card data
-      window.Accept.dispatch({
-        dispatchData: secureData,
-        responseHandler: async (response: any) => {
-          if (response.messages.resultCode === 'Error') {
-            let errorMessage = "Payment processing error";
-            if (response.messages.message) {
-              errorMessage = response.messages.message.map((m: any) => m.text).join(", ");
-            }
-            toast.error(errorMessage);
-            setIsSubmitting(false);
-            return;
-          }
-          
-          // Card was tokenized successfully, now process the payment
-          const paymentData = {
-            dataDescriptor: response.opaqueData.dataDescriptor,
-            dataValue: response.opaqueData.dataValue,
-            amount: planType === "monthly" ? 9.99 : 95.90,
-            planType,
-            billingAddress: {
-              firstName: data.cardName.split(' ')[0],
-              lastName: data.cardName.split(' ').slice(1).join(' '),
-              address: data.address,
-              city: data.city,
-              state: data.state,
-              zip: data.zipCode
-            }
-          };
-          
-          // Call our edge function to process the payment
-          const { data: paymentResult, error: paymentError } = await supabase.functions.invoke('process-payment', {
-            body: paymentData
-          });
-          
-          if (paymentError || (paymentResult && !paymentResult.success)) {
-            console.error("Payment error:", paymentError || (paymentResult && paymentResult.message));
-            toast.error(paymentResult?.message || "There was an error processing your payment. Please try again.");
-            setIsSubmitting(false);
-            return;
-          }
-          
-          // Payment successful
-          toast.success("Subscription activated successfully!");
-          setTimeout(() => navigate("/dashboard"), 1500);
-        }
-      });
+      
+      // Payment successful
+      toast.success("Subscription activated successfully!");
+      
+      // Here you could update the user's subscription status in your database
+      
+      setTimeout(() => navigate("/dashboard"), 1500);
+      
     } catch (error) {
       console.error("Payment error:", error);
       toast.error("There was an error processing your payment. Please try again.");
