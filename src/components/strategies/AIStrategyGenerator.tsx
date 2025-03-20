@@ -10,9 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAIStrategies } from "@/hooks/useAIStrategies";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { v4 as uuidv4 } from "uuid";
 
 export function AIStrategyGenerator() {
   const [symbol, setSymbol] = useState("NASDAQ:AAPL");
@@ -24,6 +25,7 @@ export function AIStrategyGenerator() {
   const [error, setError] = useState<string | null>(null);
   const { addStrategy } = useAIStrategies();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const timeframes = [
     { value: "1", label: "1 Minute" },
@@ -96,8 +98,11 @@ export function AIStrategyGenerator() {
   const saveStrategy = () => {
     if (!generatedStrategy) return;
     
+    // Generate a UUID if not authenticated to ensure uniqueness
+    const strategyId = user ? uuidv4() : Date.now().toString();
+    
     addStrategy({
-      id: Date.now().toString(),
+      id: strategyId,
       name: strategyName,
       symbol,
       timeframe,
@@ -108,7 +113,9 @@ export function AIStrategyGenerator() {
     
     toast({
       title: "Strategy saved",
-      description: "Your strategy has been saved successfully",
+      description: user 
+        ? "Your strategy has been saved to your account" 
+        : "Your strategy has been saved locally. Sign in to save it to your account.",
     });
     
     // Reset form

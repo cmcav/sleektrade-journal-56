@@ -6,12 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Calendar, Clock, LineChart, AlertTriangle } from "lucide-react";
+import { Trash2, Calendar, Clock, LineChart, AlertTriangle, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export function AIStrategyList() {
-  const { strategies, removeStrategy } = useAIStrategies();
+  const { strategies, removeStrategy, isLoading } = useAIStrategies();
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
+
+  if (isLoading) {
+    return (
+      <Card className="bg-muted/40">
+        <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+          <h3 className="text-lg font-medium">Loading strategies</h3>
+          <p className="text-muted-foreground mt-1">
+            Retrieving your saved trading strategies
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (strategies.length === 0) {
     return (
