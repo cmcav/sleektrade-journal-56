@@ -43,18 +43,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
       setIsLoading(true);
+      
+      // For "Remember Me" functionality, we adjust the session length
+      // The expiresIn property isn't directly supported in options, so we'll
+      // handle it differently
+      
       const { error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password,
-        options: {
-          // When rememberMe is false, session expires in 1 hour
-          // When true, it uses the default (longer) expiration
-          expiresIn: rememberMe ? undefined : 3600
-        }
+        password
       });
       
       if (error) {
         throw error;
+      }
+      
+      // If rememberMe is false, we set a shorter session by signing out after 1 hour
+      if (!rememberMe) {
+        // Schedule a sign out in 1 hour (3600000 ms)
+        setTimeout(() => {
+          supabase.auth.signOut();
+        }, 3600000);
       }
       
       toast({
