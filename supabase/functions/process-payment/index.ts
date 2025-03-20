@@ -19,6 +19,11 @@ serve(async (req) => {
     const environment = Deno.env.get("AUTHNET_ENVIRONMENT") || "SANDBOX";
     
     if (!apiLoginId || !transactionKey) {
+      console.error("Missing Authorize.net credentials:", { 
+        apiLoginId: !!apiLoginId, 
+        transactionKey: !!transactionKey 
+      });
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -30,6 +35,12 @@ serve(async (req) => {
         }
       );
     }
+    
+    console.log("Using Authorize.net credentials:", { 
+      apiLoginId, 
+      environment,
+      transactionKeyLength: transactionKey.length // Log length only, not the actual key
+    });
     
     // Parse request body
     const { cardData, amount, planType, billingAddress } = await req.json();
