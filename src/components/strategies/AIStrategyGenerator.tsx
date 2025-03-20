@@ -11,6 +11,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAIStrategies } from "@/hooks/useAIStrategies";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export function AIStrategyGenerator() {
   const [symbol, setSymbol] = useState("NASDAQ:AAPL");
@@ -19,6 +21,7 @@ export function AIStrategyGenerator() {
   const [strategyName, setStrategyName] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStrategy, setGeneratedStrategy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { addStrategy } = useAIStrategies();
   const { toast } = useToast();
 
@@ -43,6 +46,8 @@ export function AIStrategyGenerator() {
     }
 
     setIsGenerating(true);
+    setError(null);
+    setGeneratedStrategy(null);
     
     try {
       // Call our Supabase Edge Function
@@ -59,6 +64,16 @@ export function AIStrategyGenerator() {
         throw new Error(error.message);
       }
 
+      if (data.error) {
+        setError(data.error);
+        toast({
+          title: "Generation failed",
+          description: data.error,
+          variant: "destructive"
+        });
+        return;
+      }
+
       setGeneratedStrategy(data.strategy);
       
       toast({
@@ -67,6 +82,7 @@ export function AIStrategyGenerator() {
       });
     } catch (error) {
       console.error('Error generating strategy:', error);
+      setError(error instanceof Error ? error.message : "Failed to generate strategy");
       toast({
         title: "Generation failed",
         description: error instanceof Error ? error.message : "Failed to generate strategy",
@@ -196,6 +212,16 @@ export function AIStrategyGenerator() {
             />
           </CardContent>
         </Card>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {generatedStrategy && (
           <Card>

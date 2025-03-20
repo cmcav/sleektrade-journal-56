@@ -16,6 +16,21 @@ serve(async (req) => {
   }
 
   try {
+    // Check if OpenAI API key is available
+    if (!openAIApiKey) {
+      console.error('OpenAI API key is not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'OpenAI API key is not configured. Please add it to your Supabase project secrets.',
+          strategy: null
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     const { symbol, timeframe, riskLevel, strategyName } = await req.json();
 
     // Craft a specific prompt for trading strategy generation
@@ -52,21 +67,55 @@ serve(async (req) => {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      
+      // Handle quota exceeded error specifically
+      if (errorData.error?.message?.includes('quota')) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'OpenAI API quota exceeded. Please check your OpenAI account billing or try again later.',
+            strategy: null 
+          }),
+          { 
+            status: 429, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      // Handle any other API errors
+      return new Response(
+        JSON.stringify({ 
+          error: `OpenAI API error: ${errorData.error?.message || 'Unknown error'}`,
+          strategy: null 
+        }),
+        { 
+          status: response.status, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const data = await response.json();
     const generatedStrategy = data.choices[0].message.content;
 
     // Return the generated strategy
-    return new Response(JSON.stringify({ strategy: generatedStrategy }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ strategy: generatedStrategy, error: null }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error) {
     console.error('Error in generate-trading-strategy function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ 
+        error: `Error generating strategy: ${error.message}`,
+        strategy: null 
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });
