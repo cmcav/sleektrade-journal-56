@@ -11,7 +11,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export function SignInForm() {
+interface SignInFormProps {
+  onResetPassword?: () => void;
+}
+
+export function SignInForm({ onResetPassword }: SignInFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +96,13 @@ export function SignInForm() {
                   variant="link" 
                   className="p-0 h-auto text-xs" 
                   type="button"
-                  onClick={() => setIsForgotPasswordOpen(true)}
+                  onClick={() => {
+                    if (onResetPassword) {
+                      onResetPassword();
+                    } else {
+                      setIsForgotPasswordOpen(true);
+                    }
+                  }}
                 >
                   Forgot password?
                 </Button>
