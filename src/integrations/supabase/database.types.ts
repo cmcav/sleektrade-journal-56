@@ -20,6 +20,15 @@ export interface Trade {
   updated_at: string;
 }
 
+export interface LeaderboardUser {
+  user_id: string;
+  username: string | null;
+  total_pnl: number;
+  win_rate: number;
+  trade_count: number;
+  rank: number;
+}
+
 export interface Database extends GeneratedDatabase {
   public: {
     Tables: {
