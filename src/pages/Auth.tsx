@@ -30,14 +30,24 @@ export default function Auth() {
   useEffect(() => {
     // Check if we're coming from a password reset link or have error parameters
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const type = hashParams.get('type');
-    const error = hashParams.get('error');
-    const errorDescription = hashParams.get('error_description');
+    const queryParams = new URLSearchParams(window.location.search);
+    const type = hashParams.get('type') || queryParams.get('type');
+    const error = hashParams.get('error') || queryParams.get('error');
+    const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
     
     if (type === 'recovery') {
       // Show password reset form when coming from password reset link
       setIsPasswordReset(true);
       setActiveTab("signin");
+    }
+
+    // Handle Google OAuth errors
+    if (error && error === 'server_error' && errorDescription?.includes('Failed to fetch')) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Could not connect to Google. Please try again later.",
+      });
     }
 
     // If there's an error in the URL related to password reset
