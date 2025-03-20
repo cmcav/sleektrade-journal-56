@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useTradeData, Trade } from "@/hooks/useTradeData";
 import { motion } from "framer-motion";
+import { Confetti } from "@/components/ui/confetti";
 
 interface TradeFormProps {
   onTradeAdded?: (trade: Trade) => void;
@@ -33,6 +34,7 @@ export function TradeForm({ onTradeAdded }: TradeFormProps) {
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +63,11 @@ export function TradeForm({ onTradeAdded }: TradeFormProps) {
         // Invoke the callback with the new trade to update the parent component
         if (onTradeAdded) {
           onTradeAdded(newTrade);
+        }
+        
+        // Show confetti for profitable trades
+        if (newTrade.pnl > 0) {
+          setShowConfetti(true);
         }
         
         toast({
@@ -142,6 +149,11 @@ export function TradeForm({ onTradeAdded }: TradeFormProps) {
 
   return (
     <Card className="glass-card">
+      <Confetti 
+        show={showConfetti} 
+        onComplete={() => setShowConfetti(false)}
+        particleCount={75}
+      />
       <motion.form 
         onSubmit={handleSubmit}
         className="p-6 space-y-6"
