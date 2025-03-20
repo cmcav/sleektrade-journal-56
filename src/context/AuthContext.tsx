@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Set up auth state listener FIRST (before checking existing session)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
@@ -36,6 +37,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
+
+    // Check for email verification redirects
+    const checkEmailConfirmation = () => {
+      // Check URL params for email confirmation
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const queryParams = new URLSearchParams(window.location.search);
+      
+      const type = hashParams.get('type') || queryParams.get('type');
+      const error = hashParams.get('error') || queryParams.get('error');
+      
+      // If this is an email confirmation and there's no error, redirect to success page
+      if (type === 'signup' && !error) {
+        window.history.replaceState(null, '', '/registration-success');
+        window.location.href = '/registration-success';
+      }
+    };
+    
+    checkEmailConfirmation();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -84,7 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email, 
         password,
         options: {
-          data: metadata
+          data: metadata,
+          emailRedirectTo: `${window.location.origin}/registration-success`
         }
       });
       
