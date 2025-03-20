@@ -84,7 +84,7 @@ export function PricingSection() {
               onClick={() => setBillingCycle("yearly")}
               className="rounded-full"
             >
-              Yearly <Badge variant="outline" className="ml-2 bg-primary/20 text-primary">Save 20%</Badge>
+              Yearly <Badge variant={billingCycle === "yearly" ? "default" : "outline"} className="ml-2 bg-primary/20 text-primary-foreground">Save 20%</Badge>
             </Button>
           </motion.div>
         </div>
