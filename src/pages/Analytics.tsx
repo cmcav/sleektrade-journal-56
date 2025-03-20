@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { PageTransition } from "@/components/layout/PageTransition";
@@ -41,7 +42,7 @@ const Analytics = () => {
     
     // Sort trades by date
     const sortedTrades = [...trades].sort((a, b) => 
-      new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
+      new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
     );
     
     const now = new Date();
@@ -73,7 +74,7 @@ const Analytics = () => {
     
     // Filter trades by selected timeframe
     const filteredTrades = sortedTrades.filter(trade => {
-      const tradeDate = new Date(trade.entry_date);
+      const tradeDate = new Date(trade.entryDate);
       return isWithinInterval(tradeDate, {
         start: startOfDay(startDate),
         end: endOfDay(now)
@@ -84,7 +85,7 @@ const Analytics = () => {
     const tradesByPeriod: Record<string, number> = {};
     
     filteredTrades.forEach(trade => {
-      const date = parseISO(trade.entry_date);
+      const date = parseISO(trade.entryDate);
       const formattedDate = format(date, dateFormat);
       
       if (!tradesByPeriod[formattedDate]) {
