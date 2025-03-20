@@ -9,6 +9,8 @@ import { TradingViewChart } from "@/components/charts/TradingViewChart";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAIStrategies } from "@/hooks/useAIStrategies";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 export function AIStrategyGenerator() {
   const [symbol, setSymbol] = useState("NASDAQ:AAPL");
@@ -42,19 +44,37 @@ export function AIStrategyGenerator() {
 
     setIsGenerating(true);
     
-    // Simulate AI generation (in a real app, this would call an API)
-    setTimeout(() => {
-      const demoStrategies = [
-        `# ${strategyName}\n\n## Entry Conditions\n- Wait for a bullish engulfing pattern on ${timeframe} timeframe\n- Confirm with RSI crossing above 40\n- Volume should be above 20-day average\n\n## Exit Conditions\n- Take profit at 3% gain\n- Stop loss at 1.5% loss\n- Exit if RSI crosses above 70`,
-        `# ${strategyName}\n\n## Market Conditions\n- Trending market, preferably in direction of larger timeframe\n\n## Entry Rules\n- Enter when price crosses above 20 EMA\n- MACD histogram turns positive\n- Set limit orders at key support levels\n\n## Risk Management\n- Position size: 2% of portfolio\n- Stop loss: Below recent swing low`,
-        `# ${strategyName}\n\n## Setup\n- Identify key support/resistance levels\n- Wait for price consolidation near these levels\n\n## Trigger\n- Enter on breakout with increased volume\n- Confirm with ADX reading above 25\n\n## Management\n- Trail stop loss at previous candle low\n- Take partial profits at 2:1 reward-to-risk ratio`,
-      ];
+    try {
+      // Call our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('generate-trading-strategy', {
+        body: {
+          symbol,
+          timeframe,
+          riskLevel: riskLevel[0],
+          strategyName
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setGeneratedStrategy(data.strategy);
       
-      // Select a random strategy from the demo list
-      const randomStrategy = demoStrategies[Math.floor(Math.random() * demoStrategies.length)];
-      setGeneratedStrategy(randomStrategy);
+      toast({
+        title: "Strategy generated",
+        description: "Your AI trading strategy has been generated successfully"
+      });
+    } catch (error) {
+      console.error('Error generating strategy:', error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate strategy",
+        variant: "destructive"
+      });
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   const saveStrategy = () => {
@@ -151,7 +171,14 @@ export function AIStrategyGenerator() {
             disabled={isGenerating || !strategyName}
             className="w-full"
           >
-            {isGenerating ? "Generating..." : "Generate Strategy"}
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              "Generate Strategy"
+            )}
           </Button>
         </CardFooter>
       </Card>
