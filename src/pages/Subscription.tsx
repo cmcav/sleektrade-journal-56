@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { toast } from "sonner";
 import { CreditCard, Calendar, Lock, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Form validation schema
 const formSchema = z.object({
@@ -31,7 +33,23 @@ type FormValues = z.infer<typeof formSchema>;
 export default function Subscription() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [planType, setPlanType] = useState<"monthly" | "yearly">("monthly");
+  const [authorizeNetLoaded, setAuthorizeNetLoaded] = useState(false);
   const navigate = useNavigate();
+
+  // Load the Authorize.net Accept.js script
+  useEffect(() => {
+    if (!authorizeNetLoaded) {
+      const script = document.createElement('script');
+      script.src = 'https://js.authorize.net/v1/Accept.js'; // Use production URL in production
+      script.async = true;
+      script.onload = () => setAuthorizeNetLoaded(true);
+      document.body.appendChild(script);
+      
+      return () => {
+        document.body.removeChild(script);
+      };
+    }
+  }, [authorizeNetLoaded]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -47,25 +65,92 @@ export default function Subscription() {
     },
   });
 
-  // Handle form submission with dummy Authorize.net integration
+  // Handle form submission with Authorize.net integration
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     
-    // Simulating an API call to Authorize.net
     try {
-      // In a real application, this would be an API call to your backend
-      // which would then interact with Authorize.net
-      console.log("Payment data:", { ...data, planType });
+      if (!window.Accept) {
+        toast.error("Payment processor not ready. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
       
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Parse expiry date
+      const [expMonth, expYear] = data.expiryDate.split('/');
       
-      toast.success("Subscription activated successfully!");
-      setTimeout(() => navigate("/dashboard"), 1500);
+      // Create card data object for Authorize.net
+      const secureData = {
+        cardData: {
+          cardNumber: data.cardNumber,
+          month: expMonth,
+          year: '20' + expYear, // Add century prefix
+          cardCode: data.cvv,
+          fullName: data.cardName,
+          zip: data.zipCode
+        }
+      };
+
+      // Get dispatch token from the edge function
+      const { data: authNetConfig, error: configError } = await supabase.functions.invoke('get-authnet-config');
+      
+      if (configError) {
+        console.error("Error fetching Authorize.net config:", configError);
+        toast.error("Unable to connect to payment processor. Please try again later.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Call Authorize.net to tokenize the card data
+      window.Accept.dispatch({
+        dispatchData: secureData,
+        responseHandler: async (response: any) => {
+          if (response.messages.resultCode === 'Error') {
+            let errorMessage = "Payment processing error";
+            if (response.messages.message) {
+              errorMessage = response.messages.message.map((m: any) => m.text).join(", ");
+            }
+            toast.error(errorMessage);
+            setIsSubmitting(false);
+            return;
+          }
+          
+          // Card was tokenized successfully, now process the payment
+          const paymentData = {
+            dataDescriptor: response.opaqueData.dataDescriptor,
+            dataValue: response.opaqueData.dataValue,
+            amount: planType === "monthly" ? 9.99 : 95.90,
+            planType,
+            billingAddress: {
+              firstName: data.cardName.split(' ')[0],
+              lastName: data.cardName.split(' ').slice(1).join(' '),
+              address: data.address,
+              city: data.city,
+              state: data.state,
+              zip: data.zipCode
+            }
+          };
+          
+          // Call our edge function to process the payment
+          const { data: paymentResult, error: paymentError } = await supabase.functions.invoke('process-payment', {
+            body: paymentData
+          });
+          
+          if (paymentError || (paymentResult && !paymentResult.success)) {
+            console.error("Payment error:", paymentError || (paymentResult && paymentResult.message));
+            toast.error(paymentResult?.message || "There was an error processing your payment. Please try again.");
+            setIsSubmitting(false);
+            return;
+          }
+          
+          // Payment successful
+          toast.success("Subscription activated successfully!");
+          setTimeout(() => navigate("/dashboard"), 1500);
+        }
+      });
     } catch (error) {
       console.error("Payment error:", error);
       toast.error("There was an error processing your payment. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -365,4 +450,13 @@ export default function Subscription() {
       </div>
     </div>
   );
+}
+
+// Add Authorize.net types
+declare global {
+  interface Window {
+    Accept: {
+      dispatch: (config: any) => void;
+    };
+  }
 }
