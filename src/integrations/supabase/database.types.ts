@@ -20,6 +20,15 @@ export interface Trade {
   updated_at: string;
 }
 
+export interface JournalEntry {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LeaderboardUser {
   user_id: string;
   username: string | null;
@@ -36,6 +45,11 @@ export interface Database extends GeneratedDatabase {
         Row: Trade;
         Insert: Omit<Trade, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Trade, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      journal_entries: {
+        Row: JournalEntry;
+        Insert: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'>>;
       };
     } & GeneratedDatabase['public']['Tables'];
     Views: GeneratedDatabase['public']['Views'];
