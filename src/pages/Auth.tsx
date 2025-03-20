@@ -1,10 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -12,6 +12,19 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if the URL has a password reset token
+  useEffect(() => {
+    // Check if we're coming from a password reset link
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    
+    if (type === 'recovery') {
+      // Show signin tab when coming from password reset
+      setActiveTab("signin");
+    }
+  }, [location]);
 
   // Redirect to dashboard if already authenticated
   if (user) {
