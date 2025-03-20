@@ -24,15 +24,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Set up auth state listener FIRST (before checking existing session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
@@ -112,17 +112,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setIsLoading(true);
+      
+      // Check if we have a session before attempting to sign out
+      if (!session) {
+        console.log("No active session found for logout");
+        // Clear local state even if we don't have a session
+        setUser(null);
+        setSession(null);
+        
+        toast({
+          title: "Signed out",
+          description: "You have been signed out of your account",
+        });
+        
+        return;
+      }
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         throw error;
       }
       
+      // Manually clear the state
+      setUser(null);
+      setSession(null);
+      
       toast({
         title: "Signed out",
         description: "You have been signed out of your account",
       });
     } catch (error: any) {
+      console.error("Sign out error:", error);
       toast({
         title: "Error signing out",
         description: error.message,
