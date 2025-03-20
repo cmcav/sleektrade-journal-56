@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +83,7 @@ export function PricingSection() {
               onClick={() => setBillingCycle("yearly")}
               className="rounded-full"
             >
-              Yearly <Badge variant={billingCycle === "yearly" ? "default" : "outline"} className="ml-2 bg-primary/20 text-primary-foreground">Save 20%</Badge>
+              Yearly <Badge variant={billingCycle === "yearly" ? "default" : "outline"} className={`ml-2 ${billingCycle === "yearly" ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"}`}>Save 20%</Badge>
             </Button>
           </motion.div>
         </div>
