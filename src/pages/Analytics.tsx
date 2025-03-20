@@ -1,11 +1,13 @@
 
+import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTradeData } from "@/hooks/useTradeData";
 import { useTheme } from "@/context/ThemeContext";
-import { Calendar, LineChart } from "lucide-react";
+import { Calendar, LineChart, PieChart as PieChartIcon } from "lucide-react";
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -20,18 +22,20 @@ import {
   Legend
 } from "recharts";
 
+import { Spinner } from "@/components/ui/spinner";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent
 } from "@/components/ui/chart";
-import { format } from "date-fns";
+import { format, subDays, subMonths, subYears, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-fns";
 
 const Analytics = () => {
   const { trades, analytics, isLoading } = useTradeData();
   const { theme } = useTheme();
+  const [timeframe, setTimeframe] = useState<"day" | "week" | "month" | "year">("month");
   
-  // Generate performance data from actual trades
+  // Generate performance data based on selected timeframe
   const generatePerformanceData = () => {
     if (trades.length === 0) return [];
     
@@ -40,26 +44,78 @@ const Analytics = () => {
       new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
     );
     
-    // Group trades by month for visualization
-    const tradesByMonth: Record<string, number> = {};
+    const now = new Date();
+    let startDate;
+    let dateFormat;
     
-    sortedTrades.forEach(trade => {
-      const date = new Date(trade.entryDate);
-      const monthYear = format(date, 'MMM yyyy');
+    // Determine start date and format based on timeframe
+    switch (timeframe) {
+      case "day":
+        startDate = subDays(now, 1);
+        dateFormat = "HH:mm";
+        break;
+      case "week":
+        startDate = subDays(now, 7);
+        dateFormat = "EEE";
+        break;
+      case "month":
+        startDate = subMonths(now, 1);
+        dateFormat = "MMM dd";
+        break;
+      case "year":
+        startDate = subYears(now, 1);
+        dateFormat = "MMM yyyy";
+        break;
+      default:
+        startDate = subMonths(now, 1);
+        dateFormat = "MMM dd";
+    }
+    
+    // Filter trades by selected timeframe
+    const filteredTrades = sortedTrades.filter(trade => {
+      const tradeDate = new Date(trade.entryDate);
+      return isWithinInterval(tradeDate, {
+        start: startOfDay(startDate),
+        end: endOfDay(now)
+      });
+    });
+    
+    // Group trades by appropriate time period
+    const tradesByPeriod: Record<string, number> = {};
+    
+    filteredTrades.forEach(trade => {
+      const date = parseISO(trade.entryDate);
+      const formattedDate = format(date, dateFormat);
       
-      if (!tradesByMonth[monthYear]) {
-        tradesByMonth[monthYear] = 0;
+      if (!tradesByPeriod[formattedDate]) {
+        tradesByPeriod[formattedDate] = 0;
       }
       
-      tradesByMonth[monthYear] += trade.pnl;
+      tradesByPeriod[formattedDate] += trade.pnl;
     });
     
     // Transform to chart data format
-    return Object.entries(tradesByMonth).map(([date, pnl]) => ({
+    return Object.entries(tradesByPeriod).map(([date, pnl]) => ({
       date,
       pnl: Number(pnl.toFixed(2))
     }));
   };
+
+  // Enhanced colors for strategy pie chart - more distinct and visually appealing
+  const STRATEGY_COLORS = [
+    "#8B5CF6", // Purple
+    "#3B82F6", // Blue
+    "#10B981", // Green
+    "#F59E0B", // Amber
+    "#EC4899", // Pink
+    "#EF4444", // Red
+    "#06B6D4", // Cyan
+    "#6366F1", // Indigo
+    "#F97316", // Orange
+    "#84CC16", // Lime
+    "#14B8A6", // Teal
+    "#D946EF"  // Fuchsia
+  ];
 
   // Generate strategy performance for pie chart
   const generateStrategyData = () => {
@@ -76,9 +132,6 @@ const Analytics = () => {
       fill: pnl >= 0 ? "#4ade80" : "#f43f5e", // Green for profit, red for loss
     }));
   };
-
-  // Colors for pie chart - using more accessible colors
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
   
   // Custom tooltip formatter for strategy chart
   const strategyTooltipFormatter = (value: number, name: string, entry: any) => {
@@ -90,6 +143,17 @@ const Analytics = () => {
   // Format trades for display
   const performanceData = generatePerformanceData();
   const strategyData = generateStrategyData();
+
+  // Get appropriate title based on selected timeframe
+  const getTimeframeTitle = () => {
+    switch (timeframe) {
+      case "day": return "Last 24 Hours";
+      case "week": return "Last 7 Days";
+      case "month": return "Last 30 Days";
+      case "year": return "Last 12 Months";
+      default: return "Performance Over Time";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,20 +168,27 @@ const Analytics = () => {
           </div>
 
           {isLoading ? (
-            <div className="grid gap-8 md:grid-cols-2">
-              {[1, 2].map((i) => (
-                <Card key={i} className="glass-card p-6 h-[400px] animate-pulse flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-muted"></div>
-                </Card>
-              ))}
+            <div className="flex justify-center items-center h-[400px]">
+              <Spinner size="lg" />
             </div>
           ) : (
             <div className="space-y-8">
-              {/* Performance Over Time Chart */}
+              {/* Performance Over Time Chart with Timeframe Selector */}
               <Card className="glass-card p-6">
-                <div className="flex items-center mb-6">
-                  <LineChart className="mr-2 h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-semibold">Performance Over Time</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <LineChart className="mr-2 h-5 w-5 text-primary" />
+                    <h2 className="text-xl font-semibold">{getTimeframeTitle()}</h2>
+                  </div>
+                  
+                  <Tabs defaultValue={timeframe} onValueChange={(value) => setTimeframe(value as "day" | "week" | "month" | "year")}>
+                    <TabsList>
+                      <TabsTrigger value="day">Day</TabsTrigger>
+                      <TabsTrigger value="week">Week</TabsTrigger>
+                      <TabsTrigger value="month">Month</TabsTrigger>
+                      <TabsTrigger value="year">Year</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <div className="h-[400px]">
                   {performanceData.length > 0 ? (
@@ -167,17 +238,17 @@ const Analytics = () => {
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex h-full items-center justify-center">
-                      <p className="text-muted-foreground">No trade data available</p>
+                      <p className="text-muted-foreground">No trade data available for this time period</p>
                     </div>
                   )}
                 </div>
               </Card>
 
               <div className="grid gap-8 md:grid-cols-2">
-                {/* Strategy Performance */}
+                {/* Strategy Performance with enhanced colors */}
                 <Card className="glass-card p-6">
                   <div className="flex items-center mb-6">
-                    <Calendar className="mr-2 h-5 w-5 text-primary" />
+                    <PieChartIcon className="mr-2 h-5 w-5 text-primary" />
                     <h2 className="text-xl font-semibold">Strategy Performance</h2>
                   </div>
                   
@@ -200,7 +271,7 @@ const Analytics = () => {
                             {strategyData.map((entry, index) => (
                               <Cell 
                                 key={`cell-${index}`} 
-                                fill={entry.fill || COLORS[index % COLORS.length]} 
+                                fill={STRATEGY_COLORS[index % STRATEGY_COLORS.length]}
                               />
                             ))}
                           </Pie>
