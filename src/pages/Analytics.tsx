@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { PageTransition } from "@/components/layout/PageTransition";
@@ -29,6 +28,7 @@ import {
   ChartTooltipContent
 } from "@/components/ui/chart";
 import { format, subDays, subMonths, subYears, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-fns";
+import { TradeJournal } from "@/components/journal/TradeJournal";
 
 const Analytics = () => {
   const { trades, analytics, isLoading } = useTradeData();
@@ -41,7 +41,7 @@ const Analytics = () => {
     
     // Sort trades by date
     const sortedTrades = [...trades].sort((a, b) => 
-      new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
+      new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
     );
     
     const now = new Date();
@@ -73,7 +73,7 @@ const Analytics = () => {
     
     // Filter trades by selected timeframe
     const filteredTrades = sortedTrades.filter(trade => {
-      const tradeDate = new Date(trade.entryDate);
+      const tradeDate = new Date(trade.entry_date);
       return isWithinInterval(tradeDate, {
         start: startOfDay(startDate),
         end: endOfDay(now)
@@ -84,7 +84,7 @@ const Analytics = () => {
     const tradesByPeriod: Record<string, number> = {};
     
     filteredTrades.forEach(trade => {
-      const date = parseISO(trade.entryDate);
+      const date = parseISO(trade.entry_date);
       const formattedDate = format(date, dateFormat);
       
       if (!tradesByPeriod[formattedDate]) {
@@ -154,7 +154,7 @@ const Analytics = () => {
       default: return "Performance Over Time";
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -363,6 +363,9 @@ const Analytics = () => {
                   </div>
                 </Card>
               </div>
+              
+              {/* Trade Journal Section */}
+              <TradeJournal />
             </div>
           )}
         </main>
