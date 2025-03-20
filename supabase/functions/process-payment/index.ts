@@ -48,6 +48,9 @@ serve(async (req) => {
     }
     
     // Create the payment request body
+    // Truncate subscription name to avoid MaxLength errors
+    const subscriptionName = `SleekPro ${planType === "monthly" ? "Monthly" : "Annual"}`;
+    
     const payload = {
       createTransactionRequest: {
         merchantAuthentication: {
@@ -68,7 +71,7 @@ serve(async (req) => {
           lineItems: {
             lineItem: {
               itemId: "sub1",
-              name: `SleekTrade Pro ${planType === "monthly" ? "Monthly" : "Annual"} Subscription`,
+              name: subscriptionName,
               quantity: 1,
               unitPrice: amount.toString()
             }
@@ -93,6 +96,8 @@ serve(async (req) => {
       ? "https://api.authorize.net/xml/v1/request.api"
       : "https://apitest.authorize.net/xml/v1/request.api";
     
+    console.log("Sending payment request to Authorize.net:", JSON.stringify(payload, null, 2));
+    
     // Make the API request to Authorize.net
     const response = await fetch(apiEndpoint, {
       method: "POST",
@@ -103,6 +108,7 @@ serve(async (req) => {
     });
     
     const result = await response.json();
+    console.log("Response from Authorize.net:", JSON.stringify(result, null, 2));
     
     // Process response
     if (
