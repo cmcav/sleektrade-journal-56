@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -11,7 +12,8 @@ import {
   LogOut,
   Brain,
   CreditCard,
-  Trophy
+  Trophy,
+  User
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -37,9 +39,15 @@ export function Navbar() {
   }, [location]);
 
   // Define nav items based on authentication status
-  const navItems = [
-    { path: "/", label: "Home", icon: <Home className="w-5 h-5" /> },
-  ];
+  const navItems = [];
+  
+  // Add Home link only for non-authenticated users
+  if (!user) {
+    navItems.push({ path: "/", label: "Home", icon: <Home className="w-5 h-5" /> });
+  } else {
+    // Add Profile link for authenticated users
+    navItems.push({ path: "/profile", label: "Profile", icon: <User className="w-5 h-5" /> });
+  }
 
   // Add authenticated-only nav items
   if (user) {

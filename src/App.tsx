@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import Subscription from "./pages/Subscription";
 import Leaderboard from "./pages/Leaderboard";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/subscription" element={<Subscription />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/registration-success" element={<RegistrationSuccess />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
