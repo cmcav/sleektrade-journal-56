@@ -13,18 +13,20 @@ import {
   Brain,
   CreditCard,
   Trophy,
-  User
+  User,
+  CheckCircle
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { isSubscribed } = useSubscription();
+  const { isSubscribed, subscription } = useSubscription();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -114,6 +116,14 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center space-x-4">
+          {/* Subscription Status Badge */}
+          {user && isSubscribed && (
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1 hidden md:flex">
+              <CheckCircle className="w-3 h-3" />
+              <span>{subscription?.plan_type === 'monthly' ? 'Monthly' : 'Annual'} Pro</span>
+            </Badge>
+          )}
+          
           <ThemeToggle />
           
           {user && (
@@ -164,6 +174,14 @@ export function Navbar() {
           className="md:hidden glass border-t border-border/10"
         >
           <nav className="container mx-auto px-4 py-4 flex flex-col space-y-4">
+            {/* Subscription Status Badge (Mobile) */}
+            {user && isSubscribed && (
+              <div className="flex items-center py-2 px-3 bg-green-100 text-green-800 rounded-md mb-2">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                <span>Active {subscription?.plan_type === 'monthly' ? 'Monthly' : 'Annual'} Subscription</span>
+              </div>
+            )}
+            
             {navItems.map((item, index) => (
               <motion.div
                 key={item.path}
