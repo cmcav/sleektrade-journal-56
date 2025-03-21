@@ -69,6 +69,36 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard: {
+        Row: {
+          id: string
+          total_pnl: number | null
+          trade_count: number | null
+          updated_at: string | null
+          user_id: string
+          username: string | null
+          win_rate: number | null
+        }
+        Insert: {
+          id?: string
+          total_pnl?: number | null
+          trade_count?: number | null
+          updated_at?: string | null
+          user_id: string
+          username?: string | null
+          win_rate?: number | null
+        }
+        Update: {
+          id?: string
+          total_pnl?: number | null
+          trade_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+          username?: string | null
+          win_rate?: number | null
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           created_at: string

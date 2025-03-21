@@ -30,12 +30,14 @@ export interface JournalEntry {
 }
 
 export interface LeaderboardUser {
+  id: string;
   user_id: string;
   username: string | null;
   total_pnl: number;
   win_rate: number;
   trade_count: number;
   rank: number;
+  updated_at: string;
 }
 
 export interface Database extends GeneratedDatabase {
@@ -50,6 +52,11 @@ export interface Database extends GeneratedDatabase {
         Row: JournalEntry;
         Insert: Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<JournalEntry, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      leaderboard: {
+        Row: Omit<LeaderboardUser, 'rank'>;
+        Insert: Omit<LeaderboardUser, 'id' | 'rank' | 'updated_at'>;
+        Update: Partial<Omit<LeaderboardUser, 'id' | 'rank' | 'updated_at'>>;
       };
     } & GeneratedDatabase['public']['Tables'];
     Views: GeneratedDatabase['public']['Views'];

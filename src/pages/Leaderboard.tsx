@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Confetti } from "@/components/ui/confetti";
 
 interface LeaderboardUser {
+  id: string;
   user_id: string;
   username: string | null;
   total_pnl: number;
@@ -30,49 +31,26 @@ export default function Leaderboard() {
     const fetchLeaderboardData = async () => {
       setIsLoading(true);
       try {
-        // Get aggregated trade data grouped by user
+        // Get data from the leaderboard table
         const { data, error } = await supabase
-          .from('trades')
-          .select('user_id, symbol, pnl, type')
-          .order('created_at', { ascending: false });
+          .from('leaderboard')
+          .select('*')
+          .order('total_pnl', { ascending: false });
 
         if (error) throw error;
 
-        // Process and aggregate the data
-        const userMap = new Map<string, LeaderboardUser>();
-        
-        data.forEach(trade => {
-          if (!userMap.has(trade.user_id)) {
-            userMap.set(trade.user_id, {
-              user_id: trade.user_id,
-              username: `Trader ${userMap.size + 1}`, // Generate placeholder names
-              total_pnl: 0,
-              win_rate: 0,
-              trade_count: 0,
-              rank: 0
-            });
-          }
-          
-          const userData = userMap.get(trade.user_id)!;
-          userData.total_pnl += Number(trade.pnl || 0);
-          userData.trade_count += 1;
-        });
+        // Add rank to each user
+        const rankedData = data.map((user, index) => ({
+          ...user,
+          rank: index + 1,
+          total_pnl: Number(user.total_pnl),
+          win_rate: Number(user.win_rate)
+        }));
 
-        // Calculate win rates
-        for (let user of userMap.values()) {
-          const winningTrades = data.filter(t => t.user_id === user.user_id && Number(t.pnl) > 0).length;
-          user.win_rate = user.trade_count > 0 ? (winningTrades / user.trade_count) * 100 : 0;
-        }
-
-        // Sort by total PnL and assign ranks
-        const sortedUsers = Array.from(userMap.values())
-          .sort((a, b) => b.total_pnl - a.total_pnl)
-          .map((user, index) => ({ ...user, rank: index + 1 }));
-
-        setLeaderboardData(sortedUsers);
+        setLeaderboardData(rankedData);
         
         // Show confetti for first place
-        if (sortedUsers.length > 0) {
+        if (rankedData.length > 0) {
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 3000);
         }
@@ -87,6 +65,7 @@ export default function Leaderboard() {
         // Provide sample data as fallback
         const sampleData: LeaderboardUser[] = [
           {
+            id: "1",
             user_id: "1",
             username: "TradingMaster",
             total_pnl: 12580.75,
@@ -95,6 +74,7 @@ export default function Leaderboard() {
             rank: 1
           },
           {
+            id: "2",
             user_id: "2",
             username: "StockGuru",
             total_pnl: 9750.25,
@@ -103,6 +83,7 @@ export default function Leaderboard() {
             rank: 2
           },
           {
+            id: "3",
             user_id: "3",
             username: "MarketWhiz",
             total_pnl: 8420.50,
@@ -111,6 +92,7 @@ export default function Leaderboard() {
             rank: 3
           },
           {
+            id: "4",
             user_id: "4",
             username: "InvestorPro",
             total_pnl: 7320.80,
@@ -119,6 +101,7 @@ export default function Leaderboard() {
             rank: 4
           },
           {
+            id: "5",
             user_id: "5",
             username: "WealthBuilder",
             total_pnl: 6250.45,
@@ -135,21 +118,21 @@ export default function Leaderboard() {
 
     fetchLeaderboardData();
     
-    // Set up a subscription to real-time updates for trades table
-    const tradesSubscription = supabase
-      .channel('public:trades')
+    // Set up a subscription to real-time updates for leaderboard table
+    const leaderboardSubscription = supabase
+      .channel('public:leaderboard')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'trades'
+        table: 'leaderboard'
       }, () => {
-        // Refresh leaderboard data when trades change
+        // Refresh leaderboard data when leaderboard changes
         fetchLeaderboardData();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(tradesSubscription);
+      supabase.removeChannel(leaderboardSubscription);
     };
   }, [toast]);
 
@@ -210,7 +193,7 @@ export default function Leaderboard() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   {leaderboardData.slice(0, 3).map((trader, index) => (
-                    <Card key={trader.user_id} className={`p-6 text-center glass border-2 ${
+                    <Card key={trader.id} className={`p-6 text-center glass border-2 ${
                       index === 0 ? 'border-yellow-400 dark:border-yellow-600' :
                       index === 1 ? 'border-gray-400 dark:border-gray-500' :
                       'border-amber-600 dark:border-amber-700'
@@ -225,7 +208,7 @@ export default function Leaderboard() {
                         )}
                       </div>
                       <h3 className="text-xl font-bold mb-1 flex items-center justify-center">
-                        {trader.username}
+                        {trader.username || `Trader ${trader.rank}`}
                         {index === 0 && <Crown className="h-5 w-5 ml-2 text-yellow-400 dark:text-yellow-300" />}
                       </h3>
                       <p className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
@@ -253,14 +236,14 @@ export default function Leaderboard() {
                   </TableHeader>
                   <TableBody>
                     {leaderboardData.map((trader) => (
-                      <TableRow key={trader.user_id} className={getRankStyle(trader.rank)}>
+                      <TableRow key={trader.id} className={getRankStyle(trader.rank)}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-1">
                             {trader.rank}
                             {getRankIcon(trader.rank)}
                           </div>
                         </TableCell>
-                        <TableCell>{trader.username}</TableCell>
+                        <TableCell>{trader.username || `Trader ${trader.rank}`}</TableCell>
                         <TableCell className={`font-semibold ${
                           trader.total_pnl > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                         }`}>

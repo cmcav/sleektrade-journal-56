@@ -23,6 +23,7 @@ import { supabase } from "./integrations/supabase/client";
 // Configure Supabase realtime
 const setupRealtime = async () => {
   await supabase.channel('public:trades').subscribe();
+  await supabase.channel('public:leaderboard').subscribe();
 };
 
 const queryClient = new QueryClient();
