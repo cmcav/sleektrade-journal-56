@@ -16,6 +16,7 @@ import {
   User
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
@@ -23,6 +24,7 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { isSubscribed } = useSubscription();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,9 +58,13 @@ export function Navbar() {
       { path: "/trades", label: "Trades", icon: <LineChart className="w-5 h-5" /> },
       { path: "/analytics", label: "Analytics", icon: <BarChart4 className="w-5 h-5" /> },
       { path: "/leaderboard", label: "Leaderboard", icon: <Trophy className="w-5 h-5" /> },
-      { path: "/ai-strategies", label: "AI Strategies", icon: <Brain className="w-5 h-5" /> },
-      { path: "/subscription", label: "Subscription", icon: <CreditCard className="w-5 h-5" /> }
+      { path: "/ai-strategies", label: "AI Strategies", icon: <Brain className="w-5 h-5" /> }
     );
+    
+    // Only add subscription link if user is not already subscribed
+    if (!isSubscribed) {
+      navItems.push({ path: "/subscription", label: "Subscription", icon: <CreditCard className="w-5 h-5" /> });
+    }
   }
 
   const handleSignOut = async () => {

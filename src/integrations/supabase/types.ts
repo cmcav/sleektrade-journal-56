@@ -99,6 +99,48 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          amount: number
+          canceled_at: string | null
+          card_last_four: string
+          created_at: string
+          id: string
+          next_billing_date: string | null
+          plan_type: string
+          status: string
+          subscription_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          canceled_at?: string | null
+          card_last_four: string
+          created_at?: string
+          id?: string
+          next_billing_date?: string | null
+          plan_type: string
+          status: string
+          subscription_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          canceled_at?: string | null
+          card_last_four?: string
+          created_at?: string
+          id?: string
+          next_billing_date?: string | null
+          plan_type?: string
+          status?: string
+          subscription_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           created_at: string

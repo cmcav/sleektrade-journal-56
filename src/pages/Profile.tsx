@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,13 +9,27 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/Navbar";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { User, Shield, Mail, KeyRound } from "lucide-react";
+import { User, Shield, Mail, KeyRound, CreditCard, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Profile = () => {
   const { user, updatePassword } = useAuth();
+  const { subscription, isLoading, isSubscribed, cancelSubscription } = useSubscription();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +72,23 @@ const Profile = () => {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    try {
+      setIsCanceling(true);
+      await cancelSubscription();
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMMM d, yyyy');
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -91,6 +123,77 @@ const Profile = () => {
                 </div>
               </CardContent>
             </Card>
+            
+            {isSubscribed && subscription && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <CardTitle>Subscription Details</CardTitle>
+                  </div>
+                  <CardDescription>Your current subscription information</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Plan Type</Label>
+                      <div className="p-2 rounded bg-muted/50 capitalize">
+                        {subscription.plan_type}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Subscription Date</Label>
+                      <div className="p-2 rounded bg-muted/50">
+                        {formatDate(subscription.subscription_date)}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Payment Method</Label>
+                      <div className="p-2 rounded bg-muted/50">
+                        Card ending in {subscription.card_last_four}
+                      </div>
+                    </div>
+                    
+                    {subscription.next_billing_date && (
+                      <div className="space-y-2">
+                        <Label>Next Billing Date</Label>
+                        <div className="p-2 rounded bg-muted/50">
+                          {formatDate(subscription.next_billing_date)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" disabled={isCanceling}>
+                        {isCanceling ? "Canceling..." : "Cancel Subscription"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5" />
+                          Cancel Subscription
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCancelSubscription}>
+                          Cancel Subscription
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardFooter>
+              </Card>
+            )}
             
             <Card>
               <CardHeader>

@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,9 +44,9 @@ serve(async (req) => {
     });
     
     // Parse request body
-    const { cardData, amount, planType, billingAddress } = await req.json();
+    const { cardData, amount, planType, billingAddress, userId } = await req.json();
     
-    if (!cardData || !amount) {
+    if (!cardData || !amount || !userId) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -93,7 +94,7 @@ serve(async (req) => {
             description: "Tax"
           },
           customer: {
-            id: "1",
+            id: userId,
             email: ""
           },
           billTo: billingAddress,
@@ -126,7 +127,38 @@ serve(async (req) => {
       result.transactionResponse &&
       result.transactionResponse.responseCode === "1"
     ) {
-      // Transaction approved
+      // Transaction approved - Create Supabase client
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      // Calculate next billing date - 30 days for monthly, 365 days for annual
+      const nextBillingDate = new Date();
+      if (planType === "monthly") {
+        nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+      } else {
+        nextBillingDate.setDate(nextBillingDate.getDate() + 365);
+      }
+      
+      // Save subscription information
+      const { error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .insert({
+          user_id: userId,
+          plan_type: planType,
+          status: "active",
+          amount: amount,
+          card_last_four: cardData.cardNumber.slice(-4),
+          next_billing_date: nextBillingDate.toISOString(),
+          subscription_date: new Date().toISOString()
+        });
+      
+      if (subscriptionError) {
+        console.error("Error saving subscription:", subscriptionError);
+        // Even though there was an error saving the subscription, the payment went through,
+        // so we'll still return success
+      }
+      
       return new Response(
         JSON.stringify({
           success: true,
