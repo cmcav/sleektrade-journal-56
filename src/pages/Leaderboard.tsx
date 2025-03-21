@@ -67,7 +67,7 @@ export default function Leaderboard() {
           {
             id: "1",
             user_id: "1",
-            username: "TradingMaster",
+            username: "Trader123abc",
             total_pnl: 12580.75,
             win_rate: 72.5,
             trade_count: 145,
@@ -76,7 +76,7 @@ export default function Leaderboard() {
           {
             id: "2",
             user_id: "2",
-            username: "StockGuru",
+            username: "Trader456def",
             total_pnl: 9750.25,
             win_rate: 68.3,
             trade_count: 126,
@@ -85,7 +85,7 @@ export default function Leaderboard() {
           {
             id: "3",
             user_id: "3",
-            username: "MarketWhiz",
+            username: "Trader789ghi",
             total_pnl: 8420.50,
             win_rate: 65.7,
             trade_count: 108,
@@ -94,7 +94,7 @@ export default function Leaderboard() {
           {
             id: "4",
             user_id: "4",
-            username: "InvestorPro",
+            username: "Trader321jkl",
             total_pnl: 7320.80,
             win_rate: 63.2,
             trade_count: 95,
@@ -103,7 +103,7 @@ export default function Leaderboard() {
           {
             id: "5",
             user_id: "5",
-            username: "WealthBuilder",
+            username: "Trader654mno",
             total_pnl: 6250.45,
             win_rate: 61.8,
             trade_count: 86,
