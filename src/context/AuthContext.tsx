@@ -1,8 +1,8 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthNavigation } from '@/hooks/useAuthNavigation';
 
 type AuthContextType = {
   user: User | null;
@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { navigateTo } = useAuthNavigation();
 
   const signInWithGoogle = async () => {
     try {
@@ -190,6 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           description: "You have been signed out of your account",
         });
         
+        // Redirect to auth page after logout
+        navigateTo('/auth');
         return;
       }
       
@@ -207,6 +210,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         title: "Signed out",
         description: "You have been signed out of your account",
       });
+      
+      // Redirect to auth page after logout
+      navigateTo('/auth');
       
     } catch (error: any) {
       console.error("Sign out error:", error);
