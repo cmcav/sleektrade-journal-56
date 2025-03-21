@@ -8,14 +8,49 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CreditCard, AlertTriangle, CheckCircle2, Lock, KeyRound } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updatePassword } = useAuth();
   const { subscription, isSubscribed, cancelSubscription, isLoading } = useSubscription();
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const navigate = useNavigate();
+
+  const passwordSchema = z.object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
+  }).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+  const form = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const handlePasswordChange = async (values: z.infer<typeof passwordSchema>) => {
+    try {
+      setIsUpdatingPassword(true);
+      await updatePassword(values.password);
+      form.reset();
+    } catch (error) {
+      console.error("Error changing password:", error);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
 
   const handleCancelSubscription = async () => {
     if (confirm("Are you sure you want to cancel your subscription?")) {
@@ -61,7 +96,7 @@ export default function Profile() {
                   Your basic account details
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Email Address</p>
                   <p>{user.email}</p>
@@ -73,6 +108,64 @@ export default function Profile() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Account Created</p>
                   <p>{user.created_at ? format(new Date(user.created_at), 'PPP') : 'N/A'}</p>
+                </div>
+                
+                <Separator className="my-4" />
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-4 flex items-center">
+                    <KeyRound className="mr-2 h-5 w-5" />
+                    Change Password
+                  </h3>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handlePasswordChange)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="********" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="********" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        disabled={isUpdatingPassword}
+                        className="mt-2"
+                      >
+                        {isUpdatingPassword ? (
+                          <>
+                            <span className="mr-2">Updating...</span>
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="mr-2 h-4 w-4" />
+                            Update Password
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                 </div>
               </CardContent>
             </Card>
