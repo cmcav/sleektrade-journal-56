@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Navbar } from "@/components/layout/Navbar";
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Confetti } from "@/components/ui/confetti";
 
 interface LeaderboardUser {
   user_id: string;
@@ -22,7 +23,7 @@ interface LeaderboardUser {
 export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,8 +33,8 @@ export default function Leaderboard() {
         // Get aggregated trade data grouped by user
         const { data, error } = await supabase
           .from('trades')
-          .select('user_id, symbol, pnl')
-          .order('pnl', { ascending: false });
+          .select('user_id, symbol, pnl, type')
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
 
@@ -69,6 +70,12 @@ export default function Leaderboard() {
           .map((user, index) => ({ ...user, rank: index + 1 }));
 
         setLeaderboardData(sortedUsers);
+        
+        // Show confetti for first place
+        if (sortedUsers.length > 0) {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3000);
+        }
       } catch (error: any) {
         console.error("Error fetching leaderboard data:", error);
         toast({
@@ -127,7 +134,52 @@ export default function Leaderboard() {
     };
 
     fetchLeaderboardData();
+    
+    // Set up a subscription to real-time updates for trades table
+    const tradesSubscription = supabase
+      .channel('public:trades')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'trades'
+      }, () => {
+        // Refresh leaderboard data when trades change
+        fetchLeaderboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tradesSubscription);
+    };
   }, [toast]);
+
+  // Get rank style based on position
+  const getRankStyle = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "bg-amber-100 dark:bg-amber-950 border-amber-400 dark:border-amber-600";
+      case 2:
+        return "bg-slate-100 dark:bg-slate-900 border-slate-400 dark:border-slate-500";
+      case 3:
+        return "bg-orange-100 dark:bg-orange-950 border-orange-400 dark:border-orange-700";
+      default:
+        return "";
+    }
+  };
+
+  // Get rank icon based on position
+  const getRankIcon = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Crown className="h-4 w-4 text-amber-500 dark:text-amber-400" />;
+      case 2:
+        return <Trophy className="h-4 w-4 text-slate-500 dark:text-slate-400" />;
+      case 3:
+        return <Award className="h-4 w-4 text-orange-700 dark:text-orange-500" />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -136,8 +188,13 @@ export default function Leaderboard() {
         <div className="container mx-auto px-4 py-20">
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2">Trader Leaderboard</h1>
-            <p className="text-muted-foreground">Top performers ranked by total profit</p>
+            <p className="text-muted-foreground">
+              Top performers ranked by total profit
+              <Badge variant="secondary" className="ml-2 font-normal">Real-time Updates</Badge>
+            </p>
           </div>
+
+          <Confetti show={showConfetti} duration={3000} />
 
           <Card className="glass-card p-6 mb-10">
             {isLoading ? (
@@ -196,11 +253,11 @@ export default function Leaderboard() {
                   </TableHeader>
                   <TableBody>
                     {leaderboardData.map((trader) => (
-                      <TableRow key={trader.user_id} className={trader.rank === 1 ? "bg-yellow-50/10" : ""}>
+                      <TableRow key={trader.user_id} className={getRankStyle(trader.rank)}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-1">
                             {trader.rank}
-                            {trader.rank === 1 && <Crown className="h-4 w-4 text-yellow-400" />}
+                            {getRankIcon(trader.rank)}
                           </div>
                         </TableCell>
                         <TableCell>{trader.username}</TableCell>

@@ -17,35 +17,48 @@ import Subscription from "./pages/Subscription";
 import Leaderboard from "./pages/Leaderboard";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
 import Profile from "./pages/Profile";
+import { useEffect } from "react";
+import { supabase } from "./integrations/supabase/client";
+
+// Configure Supabase realtime
+const setupRealtime = async () => {
+  await supabase.channel('public:trades').subscribe();
+};
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/trades" element={<Trades />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/ai-strategies" element={<AIStrategies />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/subscription" element={<Subscription />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/registration-success" element={<RegistrationSuccess />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    setupRealtime();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/trades" element={<Trades />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/ai-strategies" element={<AIStrategies />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/subscription" element={<Subscription />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/registration-success" element={<RegistrationSuccess />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
