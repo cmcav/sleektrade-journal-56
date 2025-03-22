@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
 import { handleAuthorizeNetPayment } from "./payment-processor.ts";
-import { validateRequest, validatePayment } from "./validation.ts";
+import { validateRequest, validatePayment, sanitizeCardData, sanitizeBillingAddress } from "./validation.ts";
 import { handleFreeSubscription, saveSubscription, updateDiscountUsage } from "./subscription-manager.ts";
 import { corsHeaders } from "./cors.ts";
 
@@ -58,12 +58,16 @@ serve(async (req) => {
       );
     }
     
+    // Sanitize sensitive data
+    const sanitizedCardData = sanitizeCardData(cardData);
+    const sanitizedBillingAddress = sanitizeBillingAddress(billingAddress);
+    
     // Handle payment with Authorize.net
     const paymentResult = await handleAuthorizeNetPayment({
-      cardData,
+      cardData: sanitizedCardData,
       amount: finalAmount,
       planType,
-      billingAddress,
+      billingAddress: sanitizedBillingAddress,
       userId,
       clientIp: req.headers.get("X-Forwarded-For") || "127.0.0.1"
     });
@@ -74,7 +78,7 @@ serve(async (req) => {
         userId,
         planType,
         amount: finalAmount,
-        cardLastFour: cardData.cardNumber.slice(-4),
+        cardLastFour: sanitizedCardData.cardNumber.slice(-4),
         supabase
       });
       

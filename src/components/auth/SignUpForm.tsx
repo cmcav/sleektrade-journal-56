@@ -11,6 +11,13 @@ import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 
+// Function to sanitize input to prevent XSS attacks
+const sanitizeInput = (input: string): string => {
+  if (!input) return "";
+  // Remove any HTML tags
+  return input.replace(/<[^>]*>?/gm, '').trim();
+};
+
 export function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +32,23 @@ export function SignUpForm() {
     e.preventDefault();
     setError(null);
 
+    // Sanitize inputs
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedDisplayName = sanitizeInput(displayName);
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    // Validate display name
+    if (!sanitizedDisplayName || sanitizedDisplayName.length < 2) {
+      setError("Name must be at least 2 characters long");
+      return;
+    }
+
     // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -37,13 +61,20 @@ export function SignUpForm() {
       return;
     }
 
+    // Check for password complexity
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       // Pass profile data to be saved after signup
-      await signUp(email, password, {
-        display_name: displayName,
-        email
+      await signUp(sanitizedEmail, password, {
+        display_name: sanitizedDisplayName,
+        email: sanitizedEmail
       });
     } catch (err: any) {
       setError(err.message || "Failed to create account");
@@ -94,6 +125,8 @@ export function SignUpForm() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 required
+                maxLength={50} // Set maximum length
+                autoComplete="name"
               />
             </div>
             <div className="space-y-2">
@@ -105,6 +138,8 @@ export function SignUpForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                maxLength={100} // Set maximum length
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -115,6 +150,9 @@ export function SignUpForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8} // Set minimum length
+                maxLength={100} // Set maximum length
+                autoComplete="new-password"
               />
             </div>
             <div className="space-y-2">
@@ -125,6 +163,9 @@ export function SignUpForm() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                minLength={8} // Set minimum length
+                maxLength={100} // Set maximum length
+                autoComplete="new-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>

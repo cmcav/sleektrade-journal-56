@@ -2,6 +2,43 @@
 import { corsHeaders } from "./cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
 
+// Sanitize input fields to prevent XSS and injection attacks
+export function sanitizeInput(input: string): string {
+  if (!input) return "";
+  
+  // Remove any HTML tags
+  const sanitized = input.replace(/<[^>]*>?/gm, '');
+  
+  // Trim whitespace
+  return sanitized.trim();
+}
+
+// Validate and sanitize card data
+export function sanitizeCardData(cardData: any): any {
+  if (!cardData) return null;
+  
+  return {
+    cardNumber: cardData.cardNumber ? cardData.cardNumber.replace(/\D/g, '') : '',
+    expiryMonth: cardData.expiryMonth ? cardData.expiryMonth.replace(/\D/g, '') : '',
+    expiryYear: cardData.expiryYear ? cardData.expiryYear.replace(/\D/g, '') : '',
+    cvv: cardData.cvv ? cardData.cvv.replace(/\D/g, '') : ''
+  };
+}
+
+// Validate and sanitize billing address
+export function sanitizeBillingAddress(address: any): any {
+  if (!address) return null;
+  
+  return {
+    firstName: sanitizeInput(address.firstName),
+    lastName: sanitizeInput(address.lastName),
+    address: sanitizeInput(address.address),
+    city: sanitizeInput(address.city),
+    state: sanitizeInput(address.state),
+    zip: address.zip ? address.zip.replace(/[^\w\s-]/g, '') : ''
+  };
+}
+
 // Validate request and extract user ID from authentication token
 export async function validateRequest(req: Request, supabase: any) {
   // Extract the user ID from the JWT token in the request
@@ -52,12 +89,15 @@ export async function validatePayment(amount: string, discountCode: string | nul
   let appliedDiscount = null;
   
   if (discountCode) {
-    console.log("Checking discount code:", discountCode);
+    // Sanitize discount code
+    const sanitizedDiscountCode = sanitizeInput(discountCode);
+    
+    console.log("Checking discount code:", sanitizedDiscountCode);
     
     const { data: discountData, error: discountError } = await supabase
       .from("discount_codes")
       .select("id, code, percentage, max_uses, uses_count, expires_at")
-      .eq("code", discountCode)
+      .eq("code", sanitizedDiscountCode)
       .eq("is_active", true)
       .single();
     

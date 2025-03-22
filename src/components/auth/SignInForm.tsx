@@ -12,6 +12,13 @@ import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 
+// Function to sanitize input to prevent XSS attacks
+const sanitizeInput = (input: string): string => {
+  if (!input) return "";
+  // Remove any HTML tags
+  return input.replace(/<[^>]*>?/gm, '').trim();
+};
+
 interface SignInFormProps {
   onResetPassword?: () => void;
 }
@@ -33,10 +40,21 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    // Sanitize inputs
+    const sanitizedEmail = sanitizeInput(email);
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
-      await signIn(email, password, rememberMe);
+      await signIn(sanitizedEmail, password, rememberMe);
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {
@@ -61,10 +79,21 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetError(null);
+    
+    // Sanitize email
+    const sanitizedResetEmail = sanitizeInput(resetEmail);
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedResetEmail)) {
+      setResetError("Please enter a valid email address");
+      return;
+    }
+    
     setIsResetLoading(true);
     
     try {
-      await resetPassword(resetEmail);
+      await resetPassword(sanitizedResetEmail);
       setResetSent(true);
     } catch (err: any) {
       setResetError(err.message || "Failed to send reset email");
@@ -103,6 +132,8 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                maxLength={100} // Set maximum length
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -130,6 +161,7 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -216,6 +248,8 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
                 disabled={resetSent || isResetLoading}
+                maxLength={100} // Set maximum length
+                autoComplete="email"
               />
             </div>
             <DialogFooter className="mt-4">
