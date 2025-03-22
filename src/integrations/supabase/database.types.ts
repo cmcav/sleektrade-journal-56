@@ -52,6 +52,18 @@ export interface DiscountCode {
   expires_at: string | null;
 }
 
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_type: string;
+  status: string;
+  amount: number;
+  card_last_four: string;
+  subscription_date: string;
+  next_billing_date: string | null;
+  canceled_at: string | null;
+}
+
 export interface Database extends GeneratedDatabase {
   public: {
     Tables: {
@@ -74,6 +86,11 @@ export interface Database extends GeneratedDatabase {
         Row: DiscountCode;
         Insert: Omit<DiscountCode, 'id' | 'created_at' | 'uses_count'>;
         Update: Partial<Omit<DiscountCode, 'id' | 'created_at'>>;
+      };
+      subscriptions: {
+        Row: Subscription;
+        Insert: Omit<Subscription, 'id' | 'created_at'>;
+        Update: Partial<Omit<Subscription, 'id' | 'created_at'>>;
       };
     } & GeneratedDatabase['public']['Tables'];
     Views: GeneratedDatabase['public']['Views'];
