@@ -17,6 +17,8 @@ import Subscription from "./pages/Subscription";
 import Leaderboard from "./pages/Leaderboard";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
 import Profile from "./pages/Profile";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import { useEffect } from "react";
 import { supabase } from "./integrations/supabase/client";
 
@@ -52,6 +54,8 @@ const App = () => {
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/registration-success" element={<RegistrationSuccess />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 
                 {/* Handle email verification redirects that might be in different formats */}
                 <Route path="/verify" element={<NotFound />} />

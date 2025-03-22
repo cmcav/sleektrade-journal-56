@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -243,13 +242,13 @@ export default function Auth() {
           <div className="mt-8 text-center text-sm text-muted-foreground">
             <p>
               By continuing, you agree to our{" "}
-              <Button variant="link" className="p-0 h-auto text-primary">
+              <Link to="/terms" className="text-primary hover:underline">
                 Terms of Service
-              </Button>{" "}
+              </Link>{" "}
               and{" "}
-              <Button variant="link" className="p-0 h-auto text-primary">
+              <Link to="/privacy" className="text-primary hover:underline">
                 Privacy Policy
-              </Button>
+              </Link>
             </p>
           </div>
         </motion.div>

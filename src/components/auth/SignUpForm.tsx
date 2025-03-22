@@ -9,6 +9,7 @@ import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
+import { Link } from "react-router-dom";
 
 export function SignUpForm() {
   const [email, setEmail] = useState("");
