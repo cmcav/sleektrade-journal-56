@@ -49,3 +49,24 @@ export const validatePassword = (password: string): { isValid: boolean; message?
   
   return { isValid: true };
 };
+
+/**
+ * Sanitizes journal title and content to prevent XSS attacks
+ * @param input The journal text to sanitize
+ * @param maxLength Optional maximum length for the input
+ * @returns Sanitized string
+ */
+export const sanitizeJournalText = (input: string, maxLength?: number): string => {
+  if (!input) return "";
+  
+  // Remove any HTML tags
+  let sanitized = input.replace(/<[^>]*>?/gm, '').trim();
+  
+  // Truncate if maxLength is provided
+  if (maxLength && sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
+  }
+  
+  return sanitized;
+};
+

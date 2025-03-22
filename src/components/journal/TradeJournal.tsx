@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JournalEntry, JournalEntry as JournalEntryType } from "./JournalEntry";
 import { JournalList } from "./JournalList";
 import { BookText } from "lucide-react";
+import { sanitizeJournalText } from "@/utils/sanitization";
 
 export function TradeJournal() {
   const [selectedEntry, setSelectedEntry] = useState<JournalEntryType | null>(null);
@@ -18,7 +19,14 @@ export function TradeJournal() {
   };
 
   const handleEntrySelected = (entry: JournalEntryType) => {
-    setSelectedEntry(entry);
+    // Sanitize the entry before storing it in state
+    const sanitizedEntry: JournalEntryType = {
+      ...entry,
+      title: sanitizeJournalText(entry.title),
+      content: sanitizeJournalText(entry.content)
+    };
+    
+    setSelectedEntry(sanitizedEntry);
     setActiveTab("entry");
   };
 

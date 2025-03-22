@@ -5,6 +5,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { TradeForm } from "@/components/trades/TradeForm";
 import { TradeList } from "@/components/trades/TradeList";
 import { Trade } from "@/hooks/useTradeData";
+import { sanitizeJournalText } from "@/utils/sanitization";
 
 const Trades = () => {
   // Create shared state to track trades added in the current session
@@ -12,6 +13,10 @@ const Trades = () => {
   
   // Handler for new trades added
   const handleTradeAdded = (newTrade: Trade) => {
+    // Ensure trade data is sanitized before being stored in state
+    if (newTrade.notes) {
+      newTrade.notes = sanitizeJournalText(newTrade.notes);
+    }
     setRecentlyAddedTrade(newTrade);
   };
 

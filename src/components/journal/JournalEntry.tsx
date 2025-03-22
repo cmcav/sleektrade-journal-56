@@ -20,11 +20,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Save, Trash } from "lucide-react";
 import { format } from "date-fns";
+import { sanitizeJournalText } from "@/utils/sanitization";
 
-// Journal entry schema
+// Journal entry schema with max length validation
 const journalEntrySchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  content: z.string().min(1, "Entry content is required"),
+  title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
+  content: z.string().min(1, "Entry content is required").max(10000, "Entry content must be less than 10000 characters"),
 });
 
 type JournalEntryFormValues = z.infer<typeof journalEntrySchema>;
@@ -61,6 +62,10 @@ export function JournalEntry({ onEntryAdded, entry, onDelete }: JournalEntryProp
     try {
       setIsSubmitting(true);
       
+      // Sanitize input data to prevent XSS
+      const sanitizedTitle = sanitizeJournalText(data.title, 100);
+      const sanitizedContent = sanitizeJournalText(data.content, 10000);
+      
       // Check for user authentication
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
@@ -77,8 +82,8 @@ export function JournalEntry({ onEntryAdded, entry, onDelete }: JournalEntryProp
         const { error } = await supabase
           .from("journal_entries")
           .update({
-            title: data.title,
-            content: data.content,
+            title: sanitizedTitle,
+            content: sanitizedContent,
             updated_at: new Date().toISOString(),
           })
           .eq("id", entry.id);
@@ -93,8 +98,8 @@ export function JournalEntry({ onEntryAdded, entry, onDelete }: JournalEntryProp
         // Insert new entry
         const { error } = await supabase.from("journal_entries").insert({
           user_id: userData.user.id,
-          title: data.title,
-          content: data.content,
+          title: sanitizedTitle,
+          content: sanitizedContent,
         });
 
         if (error) throw error;
@@ -195,7 +200,11 @@ export function JournalEntry({ onEntryAdded, entry, onDelete }: JournalEntryProp
               <FormItem>
                 <FormLabel>Title</FormLabel>
                 <FormControl>
-                  <Input placeholder="Entry title" {...field} />
+                  <Input 
+                    placeholder="Entry title" 
+                    {...field} 
+                    maxLength={100}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -213,6 +222,7 @@ export function JournalEntry({ onEntryAdded, entry, onDelete }: JournalEntryProp
                     placeholder="Write your thoughts about your trading..." 
                     className="min-h-[200px]" 
                     {...field} 
+                    maxLength={10000}
                   />
                 </FormControl>
                 <FormMessage />

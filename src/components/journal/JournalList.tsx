@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { JournalEntry as JournalEntryType } from "./JournalEntry";
 import { FileText, BookText, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { sanitizeJournalText } from "@/utils/sanitization";
 
 interface JournalListProps {
   onSelectEntry: (entry: JournalEntryType) => void;
@@ -64,27 +65,33 @@ export function JournalList({ onSelectEntry, refreshTrigger = 0 }: JournalListPr
 
   return (
     <div className="space-y-3">
-      {entries.map((entry) => (
-        <Card 
-          key={entry.id} 
-          className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-          onClick={() => onSelectEntry(entry)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <FileText className="h-5 w-5 mr-2 text-primary" />
-              <h3 className="font-medium line-clamp-1">{entry.title}</h3>
+      {entries.map((entry) => {
+        // Sanitize title and content for display
+        const safeTitle = sanitizeJournalText(entry.title);
+        const safeContent = sanitizeJournalText(entry.content);
+        
+        return (
+          <Card 
+            key={entry.id} 
+            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => onSelectEntry(entry)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-primary" />
+                <h3 className="font-medium line-clamp-1">{safeTitle}</h3>
+              </div>
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4 mr-1" />
+                {format(new Date(entry.created_at), "MMM d, yyyy")}
+              </div>
             </div>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4 mr-1" />
-              {format(new Date(entry.created_at), "MMM d, yyyy")}
-            </div>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-            {entry.content}
-          </p>
-        </Card>
-      ))}
+            <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+              {safeContent}
+            </p>
+          </Card>
+        );
+      })}
     </div>
   );
 }
