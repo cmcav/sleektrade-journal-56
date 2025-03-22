@@ -121,7 +121,7 @@ const Privacy = () => {
             <h2 className="text-xl font-bold mt-8 mb-4">6. Children's Privacy</h2>
             <p>
               SleekTrade is not intended for individuals under the age of 18. We do not knowingly collect 
-              personal information from children. If you believe a child has provided us with personal 
+              personal information from children. If we believe a child has provided us with personal 
               information, please contact us immediately.
             </p>
 
