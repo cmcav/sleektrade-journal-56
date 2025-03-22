@@ -6,7 +6,12 @@ import { Check } from "lucide-react";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 export const SubscriptionSummary = () => {
-  const { planType, setPlanType, calculatePrice, discount } = useSubscriptionContext();
+  const { planType, setPlanType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
+  
+  // Base prices without discounts
+  const baseMonthlyPrice = 9.99;
+  const baseYearlyPrice = 95.90;
+  const currentBasePrice = planType === "monthly" ? baseMonthlyPrice : baseYearlyPrice;
 
   return (
     <Card>
@@ -55,7 +60,7 @@ export const SubscriptionSummary = () => {
             <div className="flex justify-between text-green-600 pt-2">
               <span>Discount ({discount.percentage}%)</span>
               <span>
-                -${(planType === "monthly" ? 9.99 : 95.90) * discount.percentage / 100}
+                -${((currentBasePrice * discount.percentage) / 100).toFixed(2)}
               </span>
             </div>
           )}
@@ -64,7 +69,14 @@ export const SubscriptionSummary = () => {
         <div className="border-t pt-4">
           <div className="flex justify-between font-bold text-lg">
             <span>Total</span>
-            <span>${calculatePrice()}</span>
+            {isFreeSubscription ? (
+              <div className="flex flex-col items-end">
+                <span className="line-through text-gray-400 text-sm">${currentBasePrice.toFixed(2)}</span>
+                <span className="text-green-600">FREE</span>
+              </div>
+            ) : (
+              <span>${calculatePrice()}</span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             {planType === "monthly" ? "Billed monthly" : "Billed annually"}

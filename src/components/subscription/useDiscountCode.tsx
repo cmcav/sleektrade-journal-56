@@ -12,7 +12,24 @@ export const useDiscountCode = () => {
     valid: boolean;
   } | null>(null);
   const [isCheckingDiscount, setIsCheckingDiscount] = useState(false);
+  const [showCheckingMessage, setShowCheckingMessage] = useState(false);
   const form = useForm();
+
+  // Show checking message only after a delay to prevent flickering
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isCheckingDiscount) {
+      timer = setTimeout(() => {
+        setShowCheckingMessage(true);
+      }, 600); // Only show the message if checking takes more than 600ms
+    } else {
+      setShowCheckingMessage(false);
+    }
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isCheckingDiscount]);
 
   // Verify discount code
   const checkDiscountCode = async (code: string) => {
@@ -83,5 +100,5 @@ export const useDiscountCode = () => {
     }
   };
 
-  return { discount, isCheckingDiscount, checkDiscountCode };
+  return { discount, isCheckingDiscount, showCheckingMessage, checkDiscountCode };
 };

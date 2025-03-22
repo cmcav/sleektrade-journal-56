@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +50,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
   }>({});
   const { user } = useAuth();
   const { planType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
-  const { discount: discountDetails, isCheckingDiscount, checkDiscountCode } = useDiscountCode();
+  const { discount: discountDetails, showCheckingMessage, checkDiscountCode } = useDiscountCode();
 
   // Load Authorize.net configuration
   useEffect(() => {
@@ -87,24 +88,24 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      cardName: "",
-      cardNumber: "",
-      expiryDate: "",
-      cvv: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      discountCode: "",
-    },
-    // Revalidate form when isFreeSubscription changes
+    defaultValues: isFreeSubscription ? 
+      { discountCode: "" } : 
+      {
+        cardName: "",
+        cardNumber: "",
+        expiryDate: "",
+        cvv: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        discountCode: "",
+      },
     mode: "onChange",
   });
 
   // Update form schema when isFreeSubscription changes
   useEffect(() => {
-    // Force revalidation when free subscription status changes
     form.trigger();
   }, [isFreeSubscription, form]);
 
@@ -295,7 +296,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                       </div>
                     </FormControl>
                     <FormMessage />
-                    {isCheckingDiscount && (
+                    {showCheckingMessage && (
                       <p className="text-xs text-muted-foreground mt-1">Checking discount code...</p>
                     )}
                     {discountDetails && discountDetails.valid && (
