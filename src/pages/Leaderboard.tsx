@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Crown, Trophy, Award } from "lucide-react";
+import { Crown, Trophy, Award, UserCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,6 +10,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Confetti } from "@/components/ui/confetti";
+import { useAuth } from "@/context/AuthContext";
 
 interface LeaderboardUser {
   id: string;
@@ -26,6 +27,7 @@ export default function Leaderboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchLeaderboardData = async () => {
@@ -136,17 +138,26 @@ export default function Leaderboard() {
     };
   }, [toast]);
 
+  // Check if a row belongs to the current user
+  const isCurrentUser = (trader: LeaderboardUser) => {
+    return user && trader.user_id === user.id;
+  };
+
   // Get rank style based on position
-  const getRankStyle = (rank: number) => {
+  const getRankStyle = (rank: number, isYou: boolean) => {
+    const baseStyle = isYou 
+      ? "bg-green-100 dark:bg-green-950 border-green-400 dark:border-green-600" 
+      : "";
+      
     switch (rank) {
       case 1:
-        return "bg-amber-100 dark:bg-amber-950 border-amber-400 dark:border-amber-600";
+        return `${baseStyle} bg-amber-100 dark:bg-amber-950 border-amber-400 dark:border-amber-600`;
       case 2:
-        return "bg-slate-100 dark:bg-slate-900 border-slate-400 dark:border-slate-500";
+        return `${baseStyle} bg-slate-100 dark:bg-slate-900 border-slate-400 dark:border-slate-500`;
       case 3:
-        return "bg-orange-100 dark:bg-orange-950 border-orange-400 dark:border-orange-700";
+        return `${baseStyle} bg-orange-100 dark:bg-orange-950 border-orange-400 dark:border-orange-700`;
       default:
-        return "";
+        return baseStyle;
     }
   };
 
@@ -192,34 +203,43 @@ export default function Leaderboard() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  {leaderboardData.slice(0, 3).map((trader, index) => (
-                    <Card key={trader.id} className={`p-6 text-center glass border-2 ${
-                      index === 0 ? 'border-yellow-400 dark:border-yellow-600' :
-                      index === 1 ? 'border-gray-400 dark:border-gray-500' :
-                      'border-amber-600 dark:border-amber-700'
-                    }`}>
-                      <div className="flex justify-center mb-4">
-                        {index === 0 ? (
-                          <Crown className="h-12 w-12 text-yellow-400 dark:text-yellow-300" />
-                        ) : index === 1 ? (
-                          <Trophy className="h-12 w-12 text-gray-400 dark:text-gray-300" />
-                        ) : (
-                          <Award className="h-12 w-12 text-amber-600 dark:text-amber-500" />
-                        )}
-                      </div>
-                      <h3 className="text-xl font-bold mb-1 flex items-center justify-center">
-                        {trader.username || `Trader ${trader.rank}`}
-                        {index === 0 && <Crown className="h-5 w-5 ml-2 text-yellow-400 dark:text-yellow-300" />}
-                      </h3>
-                      <p className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
-                        ${trader.total_pnl.toLocaleString('en-US', {maximumFractionDigits: 2})}
-                      </p>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Win Rate: {trader.win_rate.toFixed(1)}%</span>
-                        <span>Trades: {trader.trade_count}</span>
-                      </div>
-                    </Card>
-                  ))}
+                  {leaderboardData.slice(0, 3).map((trader, index) => {
+                    const isYou = isCurrentUser(trader);
+                    
+                    return (
+                      <Card key={trader.id} className={`p-6 text-center glass border-2 ${
+                        index === 0 ? 'border-yellow-400 dark:border-yellow-600' :
+                        index === 1 ? 'border-gray-400 dark:border-gray-500' :
+                        'border-amber-600 dark:border-amber-700'
+                      } ${isYou ? 'border-green-500 dark:border-green-600 ring-2 ring-green-500/50' : ''}`}>
+                        <div className="flex justify-center mb-4">
+                          {index === 0 ? (
+                            <Crown className="h-12 w-12 text-yellow-400 dark:text-yellow-300" />
+                          ) : index === 1 ? (
+                            <Trophy className="h-12 w-12 text-gray-400 dark:text-gray-300" />
+                          ) : (
+                            <Award className="h-12 w-12 text-amber-600 dark:text-amber-500" />
+                          )}
+                        </div>
+                        <h3 className="text-xl font-bold mb-1 flex items-center justify-center">
+                          {trader.username || `Trader ${trader.rank}`}
+                          {index === 0 && <Crown className="h-5 w-5 ml-2 text-yellow-400 dark:text-yellow-300" />}
+                          {isYou && (
+                            <Badge variant="outline" className="ml-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700">
+                              You
+                            </Badge>
+                          )}
+                        </h3>
+                        <p className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
+                          ${trader.total_pnl.toLocaleString('en-US', {maximumFractionDigits: 2})}
+                        </p>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Win Rate: {trader.win_rate.toFixed(1)}%</span>
+                          <span>Trades: {trader.trade_count}</span>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
 
                 <Separator className="my-6" />
@@ -235,24 +255,41 @@ export default function Leaderboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {leaderboardData.map((trader) => (
-                      <TableRow key={trader.id} className={getRankStyle(trader.rank)}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-1">
-                            {trader.rank}
-                            {getRankIcon(trader.rank)}
-                          </div>
-                        </TableCell>
-                        <TableCell>{trader.username || `Trader ${trader.rank}`}</TableCell>
-                        <TableCell className={`font-semibold ${
-                          trader.total_pnl > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          ${trader.total_pnl.toLocaleString('en-US', {maximumFractionDigits: 2})}
-                        </TableCell>
-                        <TableCell>{trader.win_rate.toFixed(1)}%</TableCell>
-                        <TableCell className="text-right">{trader.trade_count}</TableCell>
-                      </TableRow>
-                    ))}
+                    {leaderboardData.map((trader) => {
+                      const isYou = isCurrentUser(trader);
+                      
+                      return (
+                        <TableRow 
+                          key={trader.id} 
+                          className={getRankStyle(trader.rank, isYou)}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-1">
+                              {trader.rank}
+                              {getRankIcon(trader.rank)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {trader.username || `Trader ${trader.rank}`}
+                              {isYou && (
+                                <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700">
+                                  <UserCircle className="h-3 w-3 mr-1" />
+                                  You
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className={`font-semibold ${
+                            trader.total_pnl > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                          }`}>
+                            ${trader.total_pnl.toLocaleString('en-US', {maximumFractionDigits: 2})}
+                          </TableCell>
+                          <TableCell>{trader.win_rate.toFixed(1)}%</TableCell>
+                          <TableCell className="text-right">{trader.trade_count}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </>
