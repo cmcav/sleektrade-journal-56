@@ -29,7 +29,7 @@ export const SubscriptionProvider: React.FC<{children: React.ReactNode}> = ({ ch
       const discountAmount = (basePrice * discount.percentage) / 100;
       const finalPrice = (basePrice - discountAmount);
       
-      // If price is negative or zero due to rounding, return 0
+      // If price is zero or negative due to rounding or 100% discount, return 0
       return finalPrice <= 0 ? "0.00" : finalPrice.toFixed(2);
     }
     

@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
+import { useSubscriptionContext } from "./SubscriptionContext";
 
 export const useDiscountCode = () => {
-  const [discount, setDiscount] = useState<{
+  const { setDiscount } = useSubscriptionContext();
+  const [discount, setLocalDiscount] = useState<{
     code: string;
     percentage: number;
     valid: boolean;
@@ -15,6 +17,7 @@ export const useDiscountCode = () => {
   // Verify discount code
   const checkDiscountCode = async (code: string) => {
     if (!code.trim()) {
+      setLocalDiscount(null);
       setDiscount(null);
       return;
     }
@@ -30,6 +33,7 @@ export const useDiscountCode = () => {
       
       if (error || !data || !data.is_active) {
         console.log("Discount code error or not found:", error || "Code not found");
+        setLocalDiscount(null);
         setDiscount(null);
         form.setError("discountCode", { 
           type: "manual", 
@@ -38,6 +42,7 @@ export const useDiscountCode = () => {
       } else {
         // Check if expired
         if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          setLocalDiscount(null);
           setDiscount(null);
           form.setError("discountCode", { 
             type: "manual", 
@@ -48,6 +53,7 @@ export const useDiscountCode = () => {
         
         // Check if max uses exceeded
         if (data.max_uses !== null && data.uses_count >= data.max_uses) {
+          setLocalDiscount(null);
           setDiscount(null);
           form.setError("discountCode", { 
             type: "manual", 
@@ -57,16 +63,20 @@ export const useDiscountCode = () => {
         }
         
         // Valid discount
-        setDiscount({
+        const validDiscount = {
           code: data.code,
           percentage: data.percentage,
           valid: true
-        });
+        };
+        
+        setLocalDiscount(validDiscount);
+        setDiscount(validDiscount); // Update the context
         
         form.clearErrors("discountCode");
       }
     } catch (error) {
       console.error("Error checking discount code:", error);
+      setLocalDiscount(null);
       setDiscount(null);
     } finally {
       setIsCheckingDiscount(false);
