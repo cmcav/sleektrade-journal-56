@@ -59,6 +59,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
   const paidForm = useForm<PaidSubscriptionFormValues>({
     resolver: zodResolver(paidSubscriptionSchema),
     defaultValues: {
+      discountCode: "",
       cardName: "",
       cardNumber: "",
       expiryDate: "",
@@ -66,8 +67,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
       address: "",
       city: "",
       state: "",
-      zipCode: "",
-      discountCode: ""
+      zipCode: ""
     },
     mode: "onChange",
   });
@@ -107,27 +107,29 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
 
   // Sync discount code between forms
   useEffect(() => {
-    const freeFormDiscountCode = freeForm.watch("discountCode");
-    const paidFormDiscountCode = paidForm.watch("discountCode");
+    const freeDiscountCode = freeForm.getValues("discountCode");
+    const paidDiscountCode = paidForm.getValues("discountCode");
     
-    if (isFreeSubscription && paidFormDiscountCode !== freeFormDiscountCode) {
-      paidForm.setValue("discountCode", freeFormDiscountCode);
-    } else if (!isFreeSubscription && freeFormDiscountCode !== paidFormDiscountCode) {
-      freeForm.setValue("discountCode", paidFormDiscountCode);
+    if (isFreeSubscription && paidDiscountCode !== freeDiscountCode) {
+      paidForm.setValue("discountCode", freeDiscountCode);
+    } else if (!isFreeSubscription && freeDiscountCode !== paidDiscountCode) {
+      freeForm.setValue("discountCode", paidDiscountCode);
     }
-  }, [freeForm.watch("discountCode"), paidForm.watch("discountCode"), isFreeSubscription]);
+  }, [freeForm, paidForm, isFreeSubscription]);
 
   // Check discount code
   useEffect(() => {
-    const discountCode = form.watch("discountCode");
+    const subscriptionWatch = form.watch();
+    const discountCode = subscriptionWatch.discountCode;
+    
     const debouncedCheck = setTimeout(() => {
-      if (discountCode && discountCode.length > 2) {
+      if (discountCode && typeof discountCode === 'string' && discountCode.length > 2) {
         checkDiscountCode(discountCode);
       }
     }, 500);
     
     return () => clearTimeout(debouncedCheck);
-  }, [form.watch("discountCode"), checkDiscountCode]);
+  }, [form.watch(), checkDiscountCode]);
 
   // Handle form submission with Authorize.net
   const onSubmit = async (data: FreeSubscriptionFormValues | PaidSubscriptionFormValues) => {

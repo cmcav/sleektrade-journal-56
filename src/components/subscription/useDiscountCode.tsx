@@ -21,7 +21,7 @@ export const useDiscountCode = () => {
     if (isCheckingDiscount) {
       timer = setTimeout(() => {
         setShowCheckingMessage(true);
-      }, 600); // Only show the message if checking takes more than 600ms
+      }, 1000); // Delay the message to 1 second to reduce flickering
     } else {
       setShowCheckingMessage(false);
     }
