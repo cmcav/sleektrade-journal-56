@@ -13,9 +13,10 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { toast } from "sonner";
-import { CreditCard, Calendar, Lock, Check } from "lucide-react";
+import { CreditCard, Calendar, Lock, Check, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Form validation schema
 const formSchema = z.object({
@@ -27,6 +28,7 @@ const formSchema = z.object({
   city: z.string().min(2, { message: "City is required" }),
   state: z.string().min(2, { message: "State is required" }),
   zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, { message: "Valid ZIP code required" }),
+  discountCode: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -39,6 +41,12 @@ export default function Subscription() {
     signatureKey?: string;
     environment?: string;
   }>({});
+  const [discount, setDiscount] = useState<{
+    code: string;
+    percentage: number;
+    valid: boolean;
+  } | null>(null);
+  const [isCheckingDiscount, setIsCheckingDiscount] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -83,8 +91,94 @@ export default function Subscription() {
       city: "",
       state: "",
       zipCode: "",
+      discountCode: "",
     },
   });
+
+  // Verify discount code
+  const checkDiscountCode = async (code: string) => {
+    if (!code.trim()) {
+      setDiscount(null);
+      return;
+    }
+    
+    setIsCheckingDiscount(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from("discount_codes")
+        .select("code, percentage, is_active, max_uses, uses_count, expires_at")
+        .eq("code", code.trim())
+        .single();
+      
+      if (error || !data || !data.is_active) {
+        console.log("Discount code error or not found:", error || "Code not found");
+        setDiscount(null);
+        form.setError("discountCode", { 
+          type: "manual", 
+          message: "Invalid or expired discount code" 
+        });
+      } else {
+        // Check if expired
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          setDiscount(null);
+          form.setError("discountCode", { 
+            type: "manual", 
+            message: "This discount code has expired" 
+          });
+          return;
+        }
+        
+        // Check if max uses exceeded
+        if (data.max_uses !== null && data.uses_count >= data.max_uses) {
+          setDiscount(null);
+          form.setError("discountCode", { 
+            type: "manual", 
+            message: "This discount code has reached maximum usage" 
+          });
+          return;
+        }
+        
+        // Valid discount
+        setDiscount({
+          code: data.code,
+          percentage: data.percentage,
+          valid: true
+        });
+        
+        form.clearErrors("discountCode");
+        toast.success(`Discount code applied: ${data.percentage}% off`);
+      }
+    } catch (error) {
+      console.error("Error checking discount code:", error);
+      setDiscount(null);
+    } finally {
+      setIsCheckingDiscount(false);
+    }
+  };
+  
+  useEffect(() => {
+    const discountCode = form.watch("discountCode");
+    const debouncedCheck = setTimeout(() => {
+      if (discountCode && discountCode.length > 2) {
+        checkDiscountCode(discountCode);
+      }
+    }, 500);
+    
+    return () => clearTimeout(debouncedCheck);
+  }, [form.watch("discountCode")]);
+
+  // Calculate discounted amount
+  const calculatePrice = () => {
+    const basePrice = planType === "monthly" ? 9.99 : 95.90;
+    
+    if (discount && discount.valid) {
+      const discountAmount = (basePrice * discount.percentage) / 100;
+      return (basePrice - discountAmount).toFixed(2);
+    }
+    
+    return basePrice;
+  };
 
   // Handle form submission with Authorize.net
   const onSubmit = async (data: FormValues) => {
@@ -124,8 +218,8 @@ export default function Subscription() {
         zip: data.zipCode
       };
       
-      // Determine subscription amount
-      const amount = planType === "monthly" ? 9.99 : 95.90;
+      // Determine subscription amount and apply discount if valid
+      const amount = calculatePrice();
       
       // Call our edge function to process the payment
       const { data: paymentResult, error: paymentError } = await supabase.functions.invoke('process-payment', {
@@ -133,7 +227,8 @@ export default function Subscription() {
           cardData,
           amount,
           planType,
-          billingAddress
+          billingAddress,
+          discountCode: discount?.valid ? discount.code : null
         }
       });
       
@@ -351,6 +446,34 @@ export default function Subscription() {
                           />
                         </div>
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name="discountCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Discount Code</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  placeholder="Enter code if you have one" 
+                                  {...field} 
+                                />
+                                <Tag className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                            {isCheckingDiscount && (
+                              <p className="text-xs text-muted-foreground mt-1">Checking discount code...</p>
+                            )}
+                            {discount && discount.valid && (
+                              <p className="text-xs text-green-600 mt-1">
+                                {discount.percentage}% discount applied!
+                              </p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     
                     <Button 
@@ -404,7 +527,7 @@ export default function Subscription() {
                 <div className="space-y-1">
                   <div className="flex justify-between">
                     <span>Base Plan</span>
-                    <span>$9.99 /mo</span>
+                    <span>${planType === "monthly" ? "9.99" : "95.90"} {planType === "monthly" ? "/mo" : "/year"}</span>
                   </div>
                   
                   {planType === "yearly" && (
@@ -413,12 +536,21 @@ export default function Subscription() {
                       <span>-$23.98</span>
                     </div>
                   )}
+                  
+                  {discount && discount.valid && (
+                    <div className="flex justify-between text-green-600 pt-2">
+                      <span>Discount ({discount.percentage}%)</span>
+                      <span>
+                        -${(planType === "monthly" ? 9.99 : 95.90) * discount.percentage / 100}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>{planType === "monthly" ? "$9.99" : "$95.90"}</span>
+                    <span>${calculatePrice()}</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {planType === "monthly" ? "Billed monthly" : "Billed annually"}

@@ -44,9 +44,9 @@ serve(async (req) => {
     });
     
     // Parse request body
-    const { cardData, amount, planType, billingAddress, userId } = await req.json();
+    const { cardData, amount, planType, billingAddress, discountCode } = await req.json();
     
-    if (!cardData || !amount || !userId) {
+    if (!cardData || !amount) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -57,6 +57,78 @@ serve(async (req) => {
           status: 400
         }
       );
+    }
+    
+    // Create Supabase client for checking discount code and recording subscription
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Extract the user ID from the JWT token in the request
+    const authHeader = req.headers.get('Authorization');
+    let userId = null;
+    
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (!error && user) {
+          userId = user.id;
+        }
+      } catch (error) {
+        console.error("Error extracting user ID from token:", error);
+      }
+    }
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: "User authentication required" 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401
+        }
+      );
+    }
+    
+    // Verify discount code if provided
+    let appliedDiscount = null;
+    let finalAmount = parseFloat(amount);
+    
+    if (discountCode) {
+      console.log("Checking discount code:", discountCode);
+      
+      const { data: discountData, error: discountError } = await supabase
+        .from("discount_codes")
+        .select("id, code, percentage, max_uses, uses_count, expires_at")
+        .eq("code", discountCode)
+        .eq("is_active", true)
+        .single();
+      
+      if (!discountError && discountData) {
+        // Validate discount code
+        const isExpired = discountData.expires_at && new Date(discountData.expires_at) < new Date();
+        const isMaxedOut = discountData.max_uses !== null && discountData.uses_count >= discountData.max_uses;
+        
+        if (!isExpired && !isMaxedOut) {
+          // Apply discount
+          const discountAmount = (finalAmount * discountData.percentage) / 100;
+          finalAmount = parseFloat((finalAmount - discountAmount).toFixed(2));
+          appliedDiscount = {
+            id: discountData.id,
+            code: discountData.code,
+            percentage: discountData.percentage
+          };
+          
+          console.log(`Applied discount: ${discountData.percentage}%. New amount: $${finalAmount}`);
+        } else {
+          console.log("Discount code invalid:", isExpired ? "expired" : "maxed out");
+        }
+      } else {
+        console.log("Discount code not found or error:", discountError);
+      }
     }
     
     // Create the payment request body
@@ -72,7 +144,7 @@ serve(async (req) => {
         refId: Date.now().toString(),
         transactionRequest: {
           transactionType: "authCaptureTransaction",
-          amount: amount.toString(),
+          amount: finalAmount.toString(),
           payment: {
             creditCard: {
               cardNumber: cardData.cardNumber,
@@ -85,7 +157,7 @@ serve(async (req) => {
               itemId: "sub1",
               name: subscriptionName,
               quantity: 1,
-              unitPrice: amount.toString()
+              unitPrice: finalAmount.toString()
             }
           },
           tax: {
@@ -128,9 +200,6 @@ serve(async (req) => {
       result.transactionResponse.responseCode === "1"
     ) {
       // Transaction approved - Create Supabase client
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
       
       // Calculate next billing date - 30 days for monthly, 365 days for annual
       const nextBillingDate = new Date();
@@ -147,7 +216,7 @@ serve(async (req) => {
           user_id: userId,
           plan_type: planType,
           status: "active",
-          amount: amount,
+          amount: finalAmount,
           card_last_four: cardData.cardNumber.slice(-4),
           next_billing_date: nextBillingDate.toISOString(),
           subscription_date: new Date().toISOString()
@@ -159,10 +228,26 @@ serve(async (req) => {
         // so we'll still return success
       }
       
+      // Update discount code usage count if a valid discount was applied
+      if (appliedDiscount) {
+        const { error: discountUpdateError } = await supabase
+          .from("discount_codes")
+          .update({ 
+            uses_count: supabase.rpc('increment', { row_id: appliedDiscount.id, increment_amount: 1 }) 
+          })
+          .eq("id", appliedDiscount.id);
+          
+        if (discountUpdateError) {
+          console.error("Error updating discount code usage:", discountUpdateError);
+        }
+      }
+      
       return new Response(
         JSON.stringify({
           success: true,
           transactionId: result.transactionResponse.transId,
+          discountApplied: appliedDiscount ? appliedDiscount.percentage : 0,
+          finalAmount: finalAmount,
           message: "Payment successful"
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

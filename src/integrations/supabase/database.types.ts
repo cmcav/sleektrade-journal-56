@@ -40,6 +40,18 @@ export interface LeaderboardUser {
   updated_at: string;
 }
 
+export interface DiscountCode {
+  id: string;
+  code: string;
+  description: string | null;
+  percentage: number;
+  is_active: boolean;
+  max_uses: number | null;
+  uses_count: number;
+  created_at: string;
+  expires_at: string | null;
+}
+
 export interface Database extends GeneratedDatabase {
   public: {
     Tables: {
@@ -57,6 +69,11 @@ export interface Database extends GeneratedDatabase {
         Row: Omit<LeaderboardUser, 'rank'>;
         Insert: Omit<LeaderboardUser, 'id' | 'rank' | 'updated_at'>;
         Update: Partial<Omit<LeaderboardUser, 'id' | 'rank' | 'updated_at'>>;
+      };
+      discount_codes: {
+        Row: DiscountCode;
+        Insert: Omit<DiscountCode, 'id' | 'created_at' | 'uses_count'>;
+        Update: Partial<Omit<DiscountCode, 'id' | 'created_at'>>;
       };
     } & GeneratedDatabase['public']['Tables'];
     Views: GeneratedDatabase['public']['Views'];
