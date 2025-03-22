@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { UserCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AIStrategies = () => {
   const { user } = useAuth();
@@ -24,6 +25,11 @@ const AIStrategies = () => {
             <p className="text-muted-foreground mt-1">
               Generate and manage AI-powered trading strategies based on chart movements
             </p>
+            <Alert className="mt-4 border-yellow-500/50 bg-yellow-500/10 text-yellow-800 dark:text-yellow-300">
+              <AlertDescription>
+                This is not financial advice. Always do your own research. Stocks and crypto are volatile and investing may lead to irrecoverable loss of funds.
+              </AlertDescription>
+            </Alert>
           </div>
 
           {!user ? (
