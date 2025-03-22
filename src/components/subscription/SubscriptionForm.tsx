@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,20 +14,31 @@ import { toast } from "sonner";
 import { useSubscriptionContext } from "./SubscriptionContext";
 import { useDiscountCode } from "./useDiscountCode";
 
-// Form validation schema
-const formSchema = z.object({
-  cardName: z.string().min(2, { message: "Name is required" }),
-  cardNumber: z.string().regex(/^\d{13,19}$/, { message: "Valid card number required" }),
-  expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, { message: "Valid expiry date required (MM/YY)" }),
-  cvv: z.string().regex(/^\d{3,4}$/, { message: "Valid CVV required" }),
-  address: z.string().min(5, { message: "Address is required" }),
-  city: z.string().min(2, { message: "City is required" }),
-  state: z.string().min(2, { message: "State is required" }),
-  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, { message: "Valid ZIP code required" }),
-  discountCode: z.string().optional(),
-});
+// Form validation schema - conditionally require payment fields based on isFreeSubscription
+const createFormSchema = (isFreeSubscription: boolean) => {
+  // Base schema with discount code (always required)
+  const baseSchema = {
+    discountCode: z.string().optional(),
+  };
 
-type FormValues = z.infer<typeof formSchema>;
+  // Add payment fields if not a free subscription
+  if (!isFreeSubscription) {
+    return z.object({
+      ...baseSchema,
+      cardName: z.string().min(2, { message: "Name is required" }),
+      cardNumber: z.string().regex(/^\d{13,19}$/, { message: "Valid card number required" }),
+      expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, { message: "Valid expiry date required (MM/YY)" }),
+      cvv: z.string().regex(/^\d{3,4}$/, { message: "Valid CVV required" }),
+      address: z.string().min(5, { message: "Address is required" }),
+      city: z.string().min(2, { message: "City is required" }),
+      state: z.string().min(2, { message: "State is required" }),
+      zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, { message: "Valid ZIP code required" }),
+    });
+  }
+
+  // Return simple schema for free subscription
+  return z.object(baseSchema);
+};
 
 export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +48,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
     environment?: string;
   }>({});
   const { user } = useAuth();
-  const { planType, calculatePrice, discount } = useSubscriptionContext();
+  const { planType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
   const { discount: discountDetails, isCheckingDiscount, checkDiscountCode } = useDiscountCode();
 
   // Load Authorize.net configuration
@@ -71,6 +81,10 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
     fetchConfig();
   }, []);
 
+  // Dynamic form validation schema based on whether it's a free subscription
+  const formSchema = createFormSchema(isFreeSubscription);
+  type FormValues = z.infer<typeof formSchema>;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -84,8 +98,17 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
       zipCode: "",
       discountCode: "",
     },
+    // Revalidate form when isFreeSubscription changes
+    mode: "onChange",
   });
 
+  // Update form schema when isFreeSubscription changes
+  useEffect(() => {
+    // Force revalidation when free subscription status changes
+    form.trigger();
+  }, [isFreeSubscription, form]);
+
+  // Check discount code
   useEffect(() => {
     const discountCode = form.watch("discountCode");
     const debouncedCheck = setTimeout(() => {
@@ -241,10 +264,6 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
     return cleanValue;
   };
 
-  // Calculate the price to determine if payment form should be shown
-  const price = parseFloat(calculatePrice());
-  const isFreeSubscription = price === 0;
-
   return (
     <Card>
       <CardHeader>
@@ -282,7 +301,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                     {discountDetails && discountDetails.valid && (
                       <p className="text-xs text-green-600 mt-1">
                         {discountDetails.percentage}% discount applied!
-                        {parseFloat(calculatePrice()) === 0 && (
+                        {isFreeSubscription && (
                           <span className="block font-medium mt-1">Free subscription!</span>
                         )}
                       </p>
