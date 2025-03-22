@@ -204,10 +204,14 @@ serve(async (req) => {
       );
     }
     
+    // Determine recurring billing interval
+    const recurringBillingInterval = planType === "monthly" ? 1 : 12;
+    
     // Create the payment request body
     // Truncate subscription name to avoid MaxLength errors
     const subscriptionName = `SleekPro ${planType === "monthly" ? "Monthly" : "Annual"}`;
     
+    // Set up subscription details
     const payload = {
       createTransactionRequest: {
         merchantAuthentication: {
@@ -243,7 +247,24 @@ serve(async (req) => {
             email: ""
           },
           billTo: billingAddress,
-          customerIP: req.headers.get("X-Forwarded-For") || "127.0.0.1"
+          customerIP: req.headers.get("X-Forwarded-For") || "127.0.0.1",
+          // Add subscription details to indicate this is a recurring payment
+          subscription: {
+            paymentSchedule: {
+              interval: {
+                length: recurringBillingInterval,
+                unit: "months"
+              },
+              startDate: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+              totalOccurrences: 9999, // Unlimited until canceled
+              trialOccurrences: 0
+            },
+            name: subscriptionName,
+            description: `SleekTrade ${planType} Subscription`
+          },
+          processingOptions: {
+            isRecurring: true
+          }
         }
       }
     };
