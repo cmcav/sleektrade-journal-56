@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -146,12 +147,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, metadata?: { [key: string]: any }) => {
     try {
       setIsLoading(true);
+      
+      // Define redirect URL based on environment
+      const redirectUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://sleektrade.co/registration-success'
+        : `${window.location.origin}/registration-success`;
+      
       const { error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
           data: metadata,
-          emailRedirectTo: `${window.location.origin}/registration-success`
+          emailRedirectTo: redirectUrl
         }
       });
       
