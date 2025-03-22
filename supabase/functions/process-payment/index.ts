@@ -46,11 +46,13 @@ serve(async (req) => {
     // Parse request body
     const { cardData, amount, planType, billingAddress, discountCode } = await req.json();
     
-    if (!cardData || !amount) {
+    // Check if amount is needed
+    const finalAmount = parseFloat(amount);
+    if (isNaN(finalAmount)) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "Missing required payment information" 
+          message: "Invalid amount provided" 
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -95,7 +97,6 @@ serve(async (req) => {
     
     // Verify discount code if provided
     let appliedDiscount = null;
-    let finalAmount = parseFloat(amount);
     
     if (discountCode) {
       console.log("Checking discount code:", discountCode);
@@ -114,21 +115,93 @@ serve(async (req) => {
         
         if (!isExpired && !isMaxedOut) {
           // Apply discount
-          const discountAmount = (finalAmount * discountData.percentage) / 100;
-          finalAmount = parseFloat((finalAmount - discountAmount).toFixed(2));
           appliedDiscount = {
             id: discountData.id,
             code: discountData.code,
             percentage: discountData.percentage
           };
           
-          console.log(`Applied discount: ${discountData.percentage}%. New amount: $${finalAmount}`);
+          console.log(`Applied discount: ${discountData.percentage}%. Final amount: $${finalAmount}`);
         } else {
           console.log("Discount code invalid:", isExpired ? "expired" : "maxed out");
         }
       } else {
         console.log("Discount code not found or error:", discountError);
       }
+    }
+    
+    // If the final amount is 0, we can skip payment processing
+    if (finalAmount === 0) {
+      // Calculate next billing date - 30 days for monthly, 365 days for annual
+      const nextBillingDate = new Date();
+      if (planType === "monthly") {
+        nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+      } else {
+        nextBillingDate.setDate(nextBillingDate.getDate() + 365);
+      }
+      
+      // Save subscription information
+      const { error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .insert({
+          user_id: userId,
+          plan_type: planType,
+          status: "active",
+          amount: 0,
+          card_last_four: "FREE",
+          next_billing_date: nextBillingDate.toISOString(),
+          subscription_date: new Date().toISOString()
+        });
+      
+      if (subscriptionError) {
+        console.error("Error saving free subscription:", subscriptionError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "Error creating free subscription"
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Update discount code usage count if a valid discount was applied
+      if (appliedDiscount) {
+        const { error: discountUpdateError } = await supabase
+          .from("discount_codes")
+          .update({ 
+            uses_count: supabase.rpc('increment', { row_id: appliedDiscount.id, increment_amount: 1 }) 
+          })
+          .eq("id", appliedDiscount.id);
+          
+        if (discountUpdateError) {
+          console.error("Error updating discount code usage:", discountUpdateError);
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          transactionId: "FREE-" + Date.now(),
+          discountApplied: appliedDiscount ? appliedDiscount.percentage : 0,
+          finalAmount: 0,
+          message: "Free subscription activated"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // For non-zero amounts, proceed with normal payment processing
+    if (!cardData) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: "Missing required payment information" 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
     
     // Create the payment request body

@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 type SubscriptionContextType = {
   planType: "monthly" | "yearly";
@@ -7,6 +7,7 @@ type SubscriptionContextType = {
   discount: { code: string; percentage: number; valid: boolean } | null;
   setDiscount: (discount: { code: string; percentage: number; valid: boolean } | null) => void;
   calculatePrice: () => string;
+  isFreeSubscription: boolean;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -18,6 +19,7 @@ export const SubscriptionProvider: React.FC<{children: React.ReactNode}> = ({ ch
     percentage: number;
     valid: boolean;
   } | null>(null);
+  const [isFreeSubscription, setIsFreeSubscription] = useState(false);
 
   // Calculate discounted amount
   const calculatePrice = () => {
@@ -25,11 +27,20 @@ export const SubscriptionProvider: React.FC<{children: React.ReactNode}> = ({ ch
     
     if (discount && discount.valid) {
       const discountAmount = (basePrice * discount.percentage) / 100;
-      return (basePrice - discountAmount).toFixed(2);
+      const finalPrice = (basePrice - discountAmount);
+      
+      // If price is negative or zero due to rounding, return 0
+      return finalPrice <= 0 ? "0.00" : finalPrice.toFixed(2);
     }
     
     return basePrice.toFixed(2);
   };
+
+  // Update isFreeSubscription whenever discount or planType changes
+  useEffect(() => {
+    const price = parseFloat(calculatePrice());
+    setIsFreeSubscription(price === 0);
+  }, [discount, planType]);
 
   return (
     <SubscriptionContext.Provider value={{ 
@@ -37,7 +48,8 @@ export const SubscriptionProvider: React.FC<{children: React.ReactNode}> = ({ ch
       setPlanType, 
       discount, 
       setDiscount,
-      calculatePrice 
+      calculatePrice,
+      isFreeSubscription
     }}>
       {children}
     </SubscriptionContext.Provider>

@@ -102,15 +102,77 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
     setIsSubmitting(true);
     
     try {
-      if (!authorizeNetConfig.apiLoginId || !authorizeNetConfig.signatureKey) {
-        toast.error("Payment processor not ready. Please try again.");
-        setIsSubmitting(false);
-        return;
-      }
-      
       if (!user) {
         toast.error("You must be logged in to subscribe");
         navigate("/auth");
+        return;
+      }
+      
+      // Calculate the actual price
+      const amount = calculatePrice();
+      
+      // Check if the price is zero - meaning a 100% discount
+      if (parseFloat(amount) === 0) {
+        // Skip payment processing and create subscription directly
+        // Calculate next billing date - 30 days for monthly, 365 days for annual
+        const nextBillingDate = new Date();
+        if (planType === "monthly") {
+          nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+        } else {
+          nextBillingDate.setDate(nextBillingDate.getDate() + 365);
+        }
+        
+        // Create free subscription
+        const { error: subscriptionError } = await supabase
+          .from("subscriptions")
+          .insert({
+            user_id: user.id,
+            plan_type: planType,
+            status: "active",
+            amount: 0,
+            card_last_four: "FREE",
+            next_billing_date: nextBillingDate.toISOString(),
+            subscription_date: new Date().toISOString()
+          });
+          
+        if (subscriptionError) {
+          console.error("Error creating free subscription:", subscriptionError);
+          toast.error("Error activating your free subscription. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Update discount code usage count if a valid discount was applied
+        if (discount?.valid) {
+          const { data: discountData, error: discountFetchError } = await supabase
+            .from("discount_codes")
+            .select("id")
+            .eq("code", discount.code)
+            .single();
+            
+          if (!discountFetchError && discountData) {
+            const { error: discountUpdateError } = await supabase
+              .from("discount_codes")
+              .update({ 
+                uses_count: supabase.rpc('increment', { row_id: discountData.id, increment_amount: 1 }) 
+              })
+              .eq("id", discountData.id);
+              
+            if (discountUpdateError) {
+              console.error("Error updating discount code usage:", discountUpdateError);
+            }
+          }
+        }
+        
+        toast.success("Free subscription activated successfully!");
+        setTimeout(() => navigate("/dashboard"), 1500);
+        return;
+      }
+      
+      // For non-zero amounts, proceed with normal payment processing
+      if (!authorizeNetConfig.apiLoginId || !authorizeNetConfig.signatureKey) {
+        toast.error("Payment processor not ready. Please try again.");
+        setIsSubmitting(false);
         return;
       }
       
@@ -135,9 +197,6 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
         zip: data.zipCode
       };
       
-      // Determine subscription amount and apply discount if valid
-      const amount = calculatePrice();
-      
       // Call our edge function to process the payment
       const { data: paymentResult, error: paymentError } = await supabase.functions.invoke('process-payment', {
         body: {
@@ -158,8 +217,6 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
       
       // Payment successful
       toast.success("Subscription activated successfully!");
-      
-      // Here you could update the user's subscription status in your database
       
       setTimeout(() => navigate("/dashboard"), 1500);
       
@@ -184,165 +241,25 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
     return cleanValue;
   };
 
+  // Calculate the price to determine if payment form should be shown
+  const price = parseFloat(calculatePrice());
+  const isFreeSubscription = price === 0;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment Information</CardTitle>
-        <CardDescription>Your payment is secured with 256-bit SSL encryption</CardDescription>
+        <CardTitle>{isFreeSubscription ? "Activate Free Subscription" : "Payment Information"}</CardTitle>
+        <CardDescription>
+          {isFreeSubscription ? 
+            "Your discount code provides a free subscription" : 
+            "Your payment is secured with 256-bit SSL encryption"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="cardName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name on Card</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Smith" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="cardNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Card Number</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input 
-                          placeholder="1234 5678 9012 3456" 
-                          {...field} 
-                          onChange={(e) => {
-                            field.onChange(formatCardNumber(e.target.value));
-                          }}
-                          maxLength={19}
-                        />
-                        <CreditCard className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="expiryDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Expiry Date</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            placeholder="MM/YY" 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(formatExpiryDate(e.target.value));
-                            }}
-                            maxLength={5}
-                          />
-                          <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="cvv"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CVV</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            placeholder="123" 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(e.target.value.replace(/\D/g, ""));
-                            }}
-                            maxLength={4}
-                            type="password"
-                          />
-                          <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Billing Address</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="123 Main St" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City</FormLabel>
-                      <FormControl>
-                        <Input placeholder="New York" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State</FormLabel>
-                        <FormControl>
-                          <Input placeholder="NY" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="zipCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ZIP</FormLabel>
-                        <FormControl>
-                          <Input placeholder="10001" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
+              {/* Always show discount code field */}
               <FormField
                 control={form.control}
                 name="discountCode"
@@ -365,11 +282,168 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                     {discountDetails && discountDetails.valid && (
                       <p className="text-xs text-green-600 mt-1">
                         {discountDetails.percentage}% discount applied!
+                        {parseFloat(calculatePrice()) === 0 && (
+                          <span className="block font-medium mt-1">Free subscription!</span>
+                        )}
                       </p>
                     )}
                   </FormItem>
                 )}
               />
+
+              {/* Only show payment form if it's not a free subscription */}
+              {!isFreeSubscription && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="cardName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name on Card</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Smith" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="cardNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Card Number</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              placeholder="1234 5678 9012 3456" 
+                              {...field} 
+                              onChange={(e) => {
+                                field.onChange(formatCardNumber(e.target.value));
+                              }}
+                              maxLength={19}
+                            />
+                            <CreditCard className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="expiryDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Expiry Date</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                placeholder="MM/YY" 
+                                {...field} 
+                                onChange={(e) => {
+                                  field.onChange(formatExpiryDate(e.target.value));
+                                }}
+                                maxLength={5}
+                              />
+                              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="cvv"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CVV</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                placeholder="123" 
+                                {...field} 
+                                onChange={(e) => {
+                                  field.onChange(e.target.value.replace(/\D/g, ""));
+                                }}
+                                maxLength={4}
+                                type="password"
+                              />
+                              <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Billing Address</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="123 Main St" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input placeholder="New York" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input placeholder="NY" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="zipCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ZIP</FormLabel>
+                            <FormControl>
+                              <Input placeholder="10001" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             
             <Button 
@@ -377,7 +451,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
               className="w-full" 
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Processing..." : "Subscribe Now"}
+              {isSubmitting ? "Processing..." : (isFreeSubscription ? "Activate Free Subscription" : "Subscribe Now")}
             </Button>
           </form>
         </Form>
