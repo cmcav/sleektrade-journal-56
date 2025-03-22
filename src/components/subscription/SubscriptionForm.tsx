@@ -15,31 +15,26 @@ import { toast } from "sonner";
 import { useSubscriptionContext } from "./SubscriptionContext";
 import { useDiscountCode } from "./useDiscountCode";
 
-// Form validation schema - conditionally require payment fields based on isFreeSubscription
-const createFormSchema = (isFreeSubscription: boolean) => {
-  // Base schema with discount code (always required)
-  const baseSchema = {
-    discountCode: z.string().optional(),
-  };
+// Define two separate schemas
+const freeSubscriptionSchema = z.object({
+  discountCode: z.string().optional(),
+});
 
-  // Add payment fields if not a free subscription
-  if (!isFreeSubscription) {
-    return z.object({
-      ...baseSchema,
-      cardName: z.string().min(2, { message: "Name is required" }),
-      cardNumber: z.string().regex(/^\d{13,19}$/, { message: "Valid card number required" }),
-      expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, { message: "Valid expiry date required (MM/YY)" }),
-      cvv: z.string().regex(/^\d{3,4}$/, { message: "Valid CVV required" }),
-      address: z.string().min(5, { message: "Address is required" }),
-      city: z.string().min(2, { message: "City is required" }),
-      state: z.string().min(2, { message: "State is required" }),
-      zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, { message: "Valid ZIP code required" }),
-    });
-  }
+const paidSubscriptionSchema = z.object({
+  discountCode: z.string().optional(),
+  cardName: z.string().min(2, { message: "Name is required" }),
+  cardNumber: z.string().regex(/^\d{13,19}$/, { message: "Valid card number required" }),
+  expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, { message: "Valid expiry date required (MM/YY)" }),
+  cvv: z.string().regex(/^\d{3,4}$/, { message: "Valid CVV required" }),
+  address: z.string().min(5, { message: "Address is required" }),
+  city: z.string().min(2, { message: "City is required" }),
+  state: z.string().min(2, { message: "State is required" }),
+  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, { message: "Valid ZIP code required" }),
+});
 
-  // Return simple schema for free subscription
-  return z.object(baseSchema);
-};
+// Define types based on schemas
+type FreeSubscriptionFormValues = z.infer<typeof freeSubscriptionSchema>;
+type PaidSubscriptionFormValues = z.infer<typeof paidSubscriptionSchema>;
 
 export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +46,34 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
   const { user } = useAuth();
   const { planType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
   const { discount: discountDetails, showCheckingMessage, checkDiscountCode } = useDiscountCode();
+
+  // Create separate form instances for each type
+  const freeForm = useForm<FreeSubscriptionFormValues>({
+    resolver: zodResolver(freeSubscriptionSchema),
+    defaultValues: {
+      discountCode: ""
+    },
+    mode: "onChange",
+  });
+
+  const paidForm = useForm<PaidSubscriptionFormValues>({
+    resolver: zodResolver(paidSubscriptionSchema),
+    defaultValues: {
+      cardName: "",
+      cardNumber: "",
+      expiryDate: "",
+      cvv: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      discountCode: ""
+    },
+    mode: "onChange",
+  });
+
+  // Use the appropriate form based on isFreeSubscription
+  const form = isFreeSubscription ? freeForm : paidForm;
 
   // Load Authorize.net configuration
   useEffect(() => {
@@ -82,32 +105,17 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
     fetchConfig();
   }, []);
 
-  // Dynamic form validation schema based on whether it's a free subscription
-  const formSchema = createFormSchema(isFreeSubscription);
-  type FormValues = z.infer<typeof formSchema>;
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: isFreeSubscription ? 
-      { discountCode: "" } : 
-      {
-        cardName: "",
-        cardNumber: "",
-        expiryDate: "",
-        cvv: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        discountCode: "",
-      },
-    mode: "onChange",
-  });
-
-  // Update form schema when isFreeSubscription changes
+  // Sync discount code between forms
   useEffect(() => {
-    form.trigger();
-  }, [isFreeSubscription, form]);
+    const freeFormDiscountCode = freeForm.watch("discountCode");
+    const paidFormDiscountCode = paidForm.watch("discountCode");
+    
+    if (isFreeSubscription && paidFormDiscountCode !== freeFormDiscountCode) {
+      paidForm.setValue("discountCode", freeFormDiscountCode);
+    } else if (!isFreeSubscription && freeFormDiscountCode !== paidFormDiscountCode) {
+      freeForm.setValue("discountCode", paidFormDiscountCode);
+    }
+  }, [freeForm.watch("discountCode"), paidForm.watch("discountCode"), isFreeSubscription]);
 
   // Check discount code
   useEffect(() => {
@@ -122,7 +130,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
   }, [form.watch("discountCode"), checkDiscountCode]);
 
   // Handle form submission with Authorize.net
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: FreeSubscriptionFormValues | PaidSubscriptionFormValues) => {
     setIsSubmitting(true);
     
     try {
@@ -196,6 +204,13 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
       // For non-zero amounts, proceed with normal payment processing
       if (!authorizeNetConfig.apiLoginId || !authorizeNetConfig.signatureKey) {
         toast.error("Payment processor not ready. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Type guard to ensure we have all the paid subscription properties
+      if (!('cardName' in data)) {
+        toast.error("Payment information required for non-free subscriptions.");
         setIsSubmitting(false);
         return;
       }
@@ -315,7 +330,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
               {!isFreeSubscription && (
                 <>
                   <FormField
-                    control={form.control}
+                    control={paidForm.control}
                     name="cardName"
                     render={({ field }) => (
                       <FormItem>
@@ -329,7 +344,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={paidForm.control}
                     name="cardNumber"
                     render={({ field }) => (
                       <FormItem>
@@ -354,7 +369,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                   
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={paidForm.control}
                       name="expiryDate"
                       render={({ field }) => (
                         <FormItem>
@@ -378,7 +393,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                     />
                     
                     <FormField
-                      control={form.control}
+                      control={paidForm.control}
                       name="cvv"
                       render={({ field }) => (
                         <FormItem>
@@ -404,7 +419,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                   </div>
                   
                   <FormField
-                    control={form.control}
+                    control={paidForm.control}
                     name="address"
                     render={({ field }) => (
                       <FormItem>
@@ -419,7 +434,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                   
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={paidForm.control}
                       name="city"
                       render={({ field }) => (
                         <FormItem>
@@ -434,7 +449,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                     
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
-                        control={form.control}
+                        control={paidForm.control}
                         name="state"
                         render={({ field }) => (
                           <FormItem>
@@ -448,7 +463,7 @@ export const SubscriptionForm = ({ navigate }: { navigate: (path: string) => voi
                       />
                       
                       <FormField
-                        control={form.control}
+                        control={paidForm.control}
                         name="zipCode"
                         render={({ field }) => (
                           <FormItem>
