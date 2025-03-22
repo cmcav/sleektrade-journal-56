@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,13 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-
-// Function to sanitize input to prevent XSS attacks
-const sanitizeInput = (input: string): string => {
-  if (!input) return "";
-  // Remove any HTML tags
-  return input.replace(/<[^>]*>?/gm, '').trim();
-};
+import { sanitizeInput, isValidEmail } from "@/utils/sanitization";
 
 interface SignInFormProps {
   onResetPassword?: () => void;
@@ -45,8 +38,7 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
     const sanitizedEmail = sanitizeInput(email);
     
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(sanitizedEmail)) {
+    if (!isValidEmail(sanitizedEmail)) {
       setError("Please enter a valid email address");
       return;
     }
@@ -84,8 +76,7 @@ export function SignInForm({ onResetPassword }: SignInFormProps) {
     const sanitizedResetEmail = sanitizeInput(resetEmail);
     
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(sanitizedResetEmail)) {
+    if (!isValidEmail(sanitizedResetEmail)) {
       setResetError("Please enter a valid email address");
       return;
     }

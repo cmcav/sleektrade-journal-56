@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,13 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
-
-// Function to sanitize input to prevent XSS attacks
-const sanitizeInput = (input: string): string => {
-  if (!input) return "";
-  // Remove any HTML tags
-  return input.replace(/<[^>]*>?/gm, '').trim();
-};
+import { sanitizeInput, isValidEmail, validatePassword } from "@/utils/sanitization";
 
 export function SignUpForm() {
   const [email, setEmail] = useState("");
@@ -37,8 +30,7 @@ export function SignUpForm() {
     const sanitizedDisplayName = sanitizeInput(displayName);
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(sanitizedEmail)) {
+    if (!isValidEmail(sanitizedEmail)) {
       setError("Please enter a valid email address");
       return;
     }
@@ -56,15 +48,9 @@ export function SignUpForm() {
     }
 
     // Validate password strength
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
-      return;
-    }
-
-    // Check for password complexity
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      setError("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message || "Invalid password");
       return;
     }
 

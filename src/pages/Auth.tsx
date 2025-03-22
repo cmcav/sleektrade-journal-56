@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { sanitizeInput, validatePassword } from "@/utils/sanitization";
 
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
@@ -74,8 +76,10 @@ export default function Auth() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setResetError("Password must be at least 6 characters");
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setResetError(passwordValidation.message || "Invalid password");
       return;
     }
 

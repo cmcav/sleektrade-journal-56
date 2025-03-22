@@ -1,9 +1,9 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { useSubscriptionContext } from "./SubscriptionContext";
+import { sanitizeInput } from "@/utils/sanitization";
 
 export const SubscriptionSummary = () => {
   const { planType, setPlanType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
@@ -12,6 +12,15 @@ export const SubscriptionSummary = () => {
   const baseMonthlyPrice = 9.99;
   const baseYearlyPrice = 95.90;
   const currentBasePrice = planType === "monthly" ? baseMonthlyPrice : baseYearlyPrice;
+
+  // Sanitize plan type to prevent XSS if it comes from URL parameters 
+  // or external sources in the future
+  const handlePlanChange = (plan: string) => {
+    const sanitizedPlan = sanitizeInput(plan);
+    if (sanitizedPlan === "monthly" || sanitizedPlan === "yearly") {
+      setPlanType(sanitizedPlan as "monthly" | "yearly");
+    }
+  };
 
   return (
     <Card>
@@ -29,14 +38,14 @@ export const SubscriptionSummary = () => {
             <Button 
               variant={planType === "monthly" ? "default" : "outline"} 
               size="sm"
-              onClick={() => setPlanType("monthly")}
+              onClick={() => handlePlanChange("monthly")}
             >
               Monthly
             </Button>
             <Button 
               variant={planType === "yearly" ? "default" : "outline"} 
               size="sm"
-              onClick={() => setPlanType("yearly")}
+              onClick={() => handlePlanChange("yearly")}
             >
               Yearly
             </Button>
@@ -46,7 +55,7 @@ export const SubscriptionSummary = () => {
         <div className="space-y-1">
           <div className="flex justify-between">
             <span>Base Plan</span>
-            <span>${planType === "monthly" ? "9.99" : "95.90"} {planType === "monthly" ? "/mo" : "/year"}</span>
+            <span>${planType === "monthly" ? baseMonthlyPrice.toFixed(2) : baseYearlyPrice.toFixed(2)} {planType === "monthly" ? "/mo" : "/year"}</span>
           </div>
           
           {planType === "yearly" && (

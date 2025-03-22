@@ -1,9 +1,9 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthNavigation } from '@/hooks/useAuthNavigation';
+import { sanitizeInput } from '@/utils/sanitization';
 
 type AuthContextType = {
   user: User | null;
@@ -19,7 +19,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Add this to the global window object for easy access
 declare global {
   interface Window {
     googleSignIn: () => Promise<void>;
@@ -111,8 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       
+      // Sanitize email
+      const sanitizedEmail = sanitizeInput(email);
+      
       const { error } = await supabase.auth.signInWithPassword({ 
-        email, 
+        email: sanitizedEmail, 
         password
       });
       
@@ -148,16 +150,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       
+      // Sanitize inputs
+      const sanitizedEmail = sanitizeInput(email);
+      let sanitizedMetadata: { [key: string]: any } = {};
+      
+      // Sanitize each field in the metadata
+      if (metadata) {
+        Object.keys(metadata).forEach(key => {
+          if (typeof metadata[key] === 'string') {
+            sanitizedMetadata[key] = sanitizeInput(metadata[key]);
+          } else {
+            sanitizedMetadata[key] = metadata[key];
+          }
+        });
+      }
+      
       // Define redirect URL based on environment
       const redirectUrl = process.env.NODE_ENV === 'production' 
         ? 'https://sleektrade.co/registration-success'
         : `${window.location.origin}/registration-success`;
       
       const { error } = await supabase.auth.signUp({ 
-        email, 
+        email: sanitizedEmail, 
         password,
         options: {
-          data: metadata,
+          data: sanitizedMetadata,
           emailRedirectTo: redirectUrl
         }
       });
@@ -236,7 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = async (email: string) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Sanitize email
+      const sanitizedEmail = sanitizeInput(email);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
         redirectTo: `${window.location.origin}/auth#type=recovery`,
       });
       
