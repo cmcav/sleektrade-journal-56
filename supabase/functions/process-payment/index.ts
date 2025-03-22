@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
 import { handleAuthorizeNetPayment } from "./payment-processor.ts";
 import { validateRequest, validatePayment, sanitizeCardData, sanitizeBillingAddress } from "./validation.ts";
+import { sanitizeUserInput } from "./validate-input.ts";
 import { handleFreeSubscription, saveSubscription, updateDiscountUsage } from "./subscription-manager.ts";
 import { corsHeaders } from "./cors.ts";
 
@@ -13,8 +14,9 @@ serve(async (req) => {
   }
   
   try {
-    // Parse request body
-    const { cardData, amount, planType, billingAddress, discountCode } = await req.json();
+    // Parse and sanitize request body
+    const rawBody = await req.json();
+    const { cardData, amount, planType, billingAddress, discountCode } = sanitizeUserInput(rawBody);
     
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -58,7 +60,7 @@ serve(async (req) => {
       );
     }
     
-    // Sanitize sensitive data
+    // Sanitize sensitive data (redundant now since we sanitize at the beginning, but kept for backward compatibility)
     const sanitizedCardData = sanitizeCardData(cardData);
     const sanitizedBillingAddress = sanitizeBillingAddress(billingAddress);
     
