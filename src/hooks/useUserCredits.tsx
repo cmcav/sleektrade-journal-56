@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,8 +45,14 @@ export function useUserCredits() {
           variant: "destructive",
         });
         setCredits(null);
-      } else {
+      } else if (data) {
         setCredits(data);
+      } else {
+        // No credits found, initialize them
+        const newCredits = await initializeCredits();
+        if (newCredits) {
+          setCredits(newCredits);
+        }
       }
     } catch (error) {
       console.error("Error in credits fetch:", error);
@@ -101,6 +108,8 @@ export function useUserCredits() {
     if (!user) return null;
     
     try {
+      console.log("Initializing credits for user:", user.id);
+      
       // First check if credits already exist
       const { data: existingCredits, error: checkError } = await supabase
         .from("user_credits")
@@ -115,6 +124,7 @@ export function useUserCredits() {
       
       // If credits already exist, return them
       if (existingCredits) {
+        console.log("Credits already exist:", existingCredits);
         return existingCredits;
       }
       
@@ -133,20 +143,34 @@ export function useUserCredits() {
       
       if (createError) {
         console.error("Error creating initial credits:", createError);
+        toast({
+          title: "Error",
+          description: "Failed to initialize your credits. Please try again later.",
+          variant: "destructive",
+        });
         return null;
       }
       
-      // Refresh the credits state
-      setCredits(newCredits);
+      console.log("New credits created:", newCredits);
       return newCredits;
     } catch (error) {
       console.error("Error in initialize credits:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred initializing your credits",
+        variant: "destructive",
+      });
       return null;
     }
   };
 
   useEffect(() => {
-    fetchCredits();
+    if (user) {
+      fetchCredits();
+    } else {
+      setCredits(null);
+      setIsLoading(false);
+    }
   }, [user]);
 
   return {

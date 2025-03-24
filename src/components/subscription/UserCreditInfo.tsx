@@ -5,6 +5,8 @@ import { CreditCard, Loader2, RotateCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { formatDistance } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 export function UserCreditInfo() {
   const { 
@@ -12,10 +14,28 @@ export function UserCreditInfo() {
     isLoading, 
     getAvailableCredits, 
     getCreditUsagePercentage,
-    getNextResetFormatted 
+    getNextResetFormatted,
+    refreshCredits,
+    initializeCredits
   } = useUserCredits();
+  
+  const [isInitializing, setIsInitializing] = useState(false);
 
-  if (isLoading) {
+  // Try to initialize credits if they don't exist
+  useEffect(() => {
+    if (!isLoading && !credits) {
+      const loadCredits = async () => {
+        setIsInitializing(true);
+        await initializeCredits();
+        refreshCredits();
+        setIsInitializing(false);
+      };
+      
+      loadCredits();
+    }
+  }, [isLoading, credits]);
+
+  if (isLoading || isInitializing) {
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -30,7 +50,28 @@ export function UserCreditInfo() {
   }
 
   if (!credits) {
-    return null;
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Generation Credits</CardTitle>
+          <CardDescription>AI strategy generation credits</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            Could not load your credit information.
+          </p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full"
+            onClick={refreshCredits}
+          >
+            <RotateCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   const resetDate = new Date(credits.last_reset_date);
