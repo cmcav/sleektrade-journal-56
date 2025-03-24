@@ -340,6 +340,14 @@ const SubscriptionPage = () => {
     setCardNumber(formattedValue);
   };
 
+  // Function to navigate back to plans tab
+  const navigateToPlansTab = () => {
+    const plansTab = document.querySelector('[data-value="plans"]') as HTMLElement;
+    if (plansTab) {
+      plansTab.click();
+    }
+  };
+
   return (
     <>
       <Navbar />
@@ -801,7 +809,7 @@ const SubscriptionPage = () => {
                           )}
                         </CardContent>
                         <CardFooter className="flex justify-between">
-                          <Button type="button" variant="outline" onClick={() => document.querySelector('[data-value="plans"]')?.click()}>
+                          <Button type="button" variant="outline" onClick={navigateToPlansTab}>
                             Back to Plans
                           </Button>
                           <Button type="submit" disabled={isProcessing}>
