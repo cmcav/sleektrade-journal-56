@@ -1,12 +1,19 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserCredits } from "@/hooks/useUserCredits";
-import { CreditCard, Loader2 } from "lucide-react";
+import { CreditCard, Loader2, RotateCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { formatDistance } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function UserCreditInfo() {
-  const { credits, isLoading, getAvailableCredits } = useUserCredits();
+  const { 
+    credits, 
+    isLoading, 
+    getAvailableCredits, 
+    getCreditUsagePercentage,
+    getNextResetFormatted 
+  } = useUserCredits();
 
   if (isLoading) {
     return (
@@ -27,8 +34,6 @@ export function UserCreditInfo() {
   }
 
   const resetDate = new Date(credits.last_reset_date);
-  const nextResetDate = new Date(resetDate);
-  nextResetDate.setMonth(nextResetDate.getMonth() + 1);
   
   return (
     <Card>
@@ -57,16 +62,27 @@ export function UserCreditInfo() {
         </div>
         
         <Progress 
-          value={(credits.used_credits / credits.total_credits) * 100} 
+          value={getCreditUsagePercentage()} 
           className="h-2 mb-3" 
         />
         
         <div className="text-sm text-muted-foreground">
-          <p className="mb-1">
-            Last reset: {formatDistance(resetDate, new Date(), { addSuffix: true })}
-          </p>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="mb-1 flex items-center gap-1 cursor-help">
+                  <RotateCw className="h-3.5 w-3.5" /> 
+                  Last reset: {formatDistance(resetDate, new Date(), { addSuffix: true })}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Credits are reset on the first day of each month</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
           <p>
-            Next reset: {formatDistance(nextResetDate, new Date(), { addSuffix: true })}
+            Next reset: {getNextResetFormatted()}
           </p>
         </div>
         

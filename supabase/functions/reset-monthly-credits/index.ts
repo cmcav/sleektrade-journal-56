@@ -25,51 +25,67 @@ serve(async (req) => {
     // Initialize Supabase client with admin privileges
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Authenticate the request if it's not from a scheduled job
-    // This prevents unauthorized access to the function
-    const authHeader = req.headers.get('Authorization');
+    // Check if this is a scheduled call or manual call
     const isScheduledJob = req.headers.get('X-Scheduled-Function') === 'true';
     
-    if (!isScheduledJob && authHeader) {
-      // If it's a manual request, verify admin privileges
+    // For manual calls, verify authorization
+    if (!isScheduledJob) {
+      const authHeader = req.headers.get('Authorization');
+      
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized access - Missing authorization header' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        );
+      }
+      
+      // Verify admin privileges for manual calls
       const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
       
       if (userError || !user) {
         return new Response(
-          JSON.stringify({ error: 'Unauthorized access' }),
+          JSON.stringify({ error: 'Unauthorized access - Invalid credentials' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
         );
       }
       
-      // Here you could verify if the user has admin privileges
-      // For simplicity, we're not implementing this check
-    } else if (!isScheduledJob) {
-      // If it's not a scheduled job and no auth header, reject
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized access' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+      console.log(`Manual credit reset requested by user: ${user.email}`);
+    } else {
+      console.log('Scheduled monthly credit reset initiated');
     }
 
     // Call the database function to reset credits
+    const startTime = Date.now();
     const { data, error } = await supabaseAdmin.rpc('reset_monthly_credits');
+    const duration = Date.now() - startTime;
     
     if (error) {
       throw error;
     }
 
-    console.log('Monthly credits have been reset successfully');
+    // Log operation details
+    const source = isScheduledJob ? 'scheduled job' : 'manual request';
+    console.log(`Monthly credits reset successful via ${source} (completed in ${duration}ms)`);
     
     return new Response(
-      JSON.stringify({ success: true, message: 'Monthly credits have been reset successfully' }),
+      JSON.stringify({ 
+        success: true, 
+        message: 'Monthly credits have been reset successfully',
+        source: isScheduledJob ? 'cron' : 'manual',
+        timestamp: new Date().toISOString()
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error resetting monthly credits:', error);
     
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

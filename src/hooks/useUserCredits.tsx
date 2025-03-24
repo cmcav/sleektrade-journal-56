@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatDistance } from "date-fns";
 
 export interface UserCredits {
   id: string;
@@ -17,6 +18,7 @@ export interface UserCredits {
 export function useUserCredits() {
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -54,6 +56,24 @@ export function useUserCredits() {
     }
   };
 
+  // Get next reset date (first day of next month)
+  const getNextResetDate = () => {
+    if (!credits) return null;
+    
+    const lastReset = new Date(credits.last_reset_date);
+    const nextReset = new Date(lastReset);
+    nextReset.setMonth(nextReset.getMonth() + 1);
+    return nextReset;
+  };
+
+  // Format the next reset date in a human-readable format
+  const getNextResetFormatted = () => {
+    const nextReset = getNextResetDate();
+    if (!nextReset) return '';
+    
+    return formatDistance(nextReset, new Date(), { addSuffix: true });
+  };
+
   // Check if user has enough credits to generate a strategy
   const hasEnoughCredits = () => {
     if (!credits) return false;
@@ -64,6 +84,12 @@ export function useUserCredits() {
   const getAvailableCredits = () => {
     if (!credits) return 0;
     return Math.max(0, credits.total_credits - credits.used_credits);
+  };
+
+  // Get credit usage percentage
+  const getCreditUsagePercentage = () => {
+    if (!credits || credits.total_credits === 0) return 0;
+    return (credits.used_credits / credits.total_credits) * 100;
   };
 
   // Refresh credits data
@@ -78,8 +104,11 @@ export function useUserCredits() {
   return {
     credits,
     isLoading,
+    isResetting,
     hasEnoughCredits,
     getAvailableCredits,
+    getCreditUsagePercentage,
+    getNextResetFormatted,
     refreshCredits,
   };
 }
