@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,6 +96,55 @@ export function useUserCredits() {
     fetchCredits();
   };
 
+  // Initialize credits for new users
+  const initializeCredits = async () => {
+    if (!user) return null;
+    
+    try {
+      // First check if credits already exist
+      const { data: existingCredits, error: checkError } = await supabase
+        .from("user_credits")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error("Error checking existing credits:", checkError);
+        return null;
+      }
+      
+      // If credits already exist, return them
+      if (existingCredits) {
+        return existingCredits;
+      }
+      
+      // Otherwise, create new credits
+      const now = new Date().toISOString();
+      const { data: newCredits, error: createError } = await supabase
+        .from("user_credits")
+        .insert({
+          user_id: user.id,
+          total_credits: 5, // Default starting credits
+          used_credits: 0,
+          last_reset_date: now
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error("Error creating initial credits:", createError);
+        return null;
+      }
+      
+      // Refresh the credits state
+      setCredits(newCredits);
+      return newCredits;
+    } catch (error) {
+      console.error("Error in initialize credits:", error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     fetchCredits();
   }, [user]);
@@ -110,5 +158,6 @@ export function useUserCredits() {
     getCreditUsagePercentage,
     getNextResetFormatted,
     refreshCredits,
+    initializeCredits
   };
 }

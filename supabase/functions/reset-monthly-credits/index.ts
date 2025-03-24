@@ -55,6 +55,10 @@ serve(async (req) => {
       console.log('Scheduled monthly credit reset initiated');
     }
 
+    // Before we reset, ensure all users have user_credits records
+    // This is important for new users who signed up but haven't generated a strategy yet
+    await ensureAllUsersHaveCredits(supabaseAdmin);
+
     // Call the database function to reset credits
     const startTime = Date.now();
     const { data, error } = await supabaseAdmin.rpc('reset_monthly_credits');
@@ -90,3 +94,61 @@ serve(async (req) => {
     );
   }
 });
+
+// Ensure all users have user_credits records
+async function ensureAllUsersHaveCredits(supabase: any) {
+  try {
+    // Get all users
+    const { data: users, error: usersError } = await supabase
+      .from('auth.users')
+      .select('id');
+    
+    if (usersError) {
+      console.error("Error fetching users:", usersError);
+      return;
+    }
+    
+    // Get all users who already have credits
+    const { data: existingCredits, error: creditsError } = await supabase
+      .from('user_credits')
+      .select('user_id');
+      
+    if (creditsError) {
+      console.error("Error fetching existing credits:", creditsError);
+      return;
+    }
+    
+    // Create a set of user IDs who already have credits
+    const existingUserIds = new Set(existingCredits.map((c: any) => c.user_id));
+    
+    // Find users who don't have credits yet
+    const usersWithoutCredits = users.filter((user: any) => !existingUserIds.has(user.id));
+    
+    if (usersWithoutCredits.length === 0) {
+      console.log("All users already have credit records");
+      return;
+    }
+    
+    // Create credit records for users who don't have them
+    const now = new Date().toISOString();
+    const newCreditRecords = usersWithoutCredits.map((user: any) => ({
+      user_id: user.id,
+      total_credits: 5, // Default starting credits
+      used_credits: 0,
+      last_reset_date: now
+    }));
+    
+    const { error: insertError } = await supabase
+      .from('user_credits')
+      .insert(newCreditRecords);
+      
+    if (insertError) {
+      console.error("Error creating credit records for new users:", insertError);
+      return;
+    }
+    
+    console.log(`Created credit records for ${usersWithoutCredits.length} new users`);
+  } catch (error) {
+    console.error("Error in ensureAllUsersHaveCredits:", error);
+  }
+}
