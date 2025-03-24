@@ -1,8 +1,11 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +19,13 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize Supabase admin client with service role key
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase URL or service role key');
+    }
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
     // Check if OpenAI API key is available
     if (!openAIApiKey) {
       console.error('OpenAI API key is not configured');
@@ -31,7 +41,94 @@ serve(async (req) => {
       );
     }
 
+    // Parse request body
     const { symbol, timeframe, riskLevel, strategyName } = await req.json();
+    
+    // Get user ID from the JWT token in the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authentication token', strategy: null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token', strategy: null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+    
+    const userId = user.id;
+    
+    // Check if user has available credits
+    const { data: creditData, error: creditError } = await supabaseAdmin
+      .from('user_credits')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (creditError) {
+      console.error('Error fetching user credits:', creditError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify credit status', strategy: null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+    
+    if (!creditData) {
+      // Create credits for user if not exists (fallback)
+      const { error: insertError } = await supabaseAdmin
+        .from('user_credits')
+        .insert({ user_id: userId });
+        
+      if (insertError) {
+        console.error('Error creating user credits:', insertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to initialize credits', strategy: null }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      
+      // Fetch the newly created credits
+      const { data: newCreditData, error: newCreditError } = await supabaseAdmin
+        .from('user_credits')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+        
+      if (newCreditError || !newCreditData) {
+        console.error('Error fetching new user credits:', newCreditError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to initialize credits', strategy: null }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      
+      if (newCreditData.used_credits >= newCreditData.total_credits) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'You have used all your credits for this month. Upgrade to premium for more credits.',
+            strategy: null,
+            creditsRemaining: 0
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+        );
+      }
+    } else if (creditData.used_credits >= creditData.total_credits) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'You have used all your credits for this month. Upgrade to premium for more credits.',
+          strategy: null,
+          creditsRemaining: 0
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
 
     // Craft a specific prompt for trading strategy generation
     const prompt = `Generate a detailed trading strategy based on the following parameters:
@@ -98,9 +195,32 @@ serve(async (req) => {
     const data = await response.json();
     const generatedStrategy = data.choices[0].message.content;
 
+    // Update user's credit usage
+    const { error: updateError } = await supabaseAdmin
+      .from('user_credits')
+      .update({ 
+        used_credits: creditData ? creditData.used_credits + 1 : 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      console.error('Error updating credits:', updateError);
+      // Continue anyway, don't block the response
+    }
+
+    // Calculate remaining credits
+    const creditsRemaining = creditData 
+      ? Math.max(0, creditData.total_credits - (creditData.used_credits + 1)) 
+      : 4; // If creditData was null and we just created it, default is 5 and we used 1
+
     // Return the generated strategy
     return new Response(
-      JSON.stringify({ strategy: generatedStrategy, error: null }),
+      JSON.stringify({ 
+        strategy: generatedStrategy, 
+        error: null, 
+        creditsRemaining
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }

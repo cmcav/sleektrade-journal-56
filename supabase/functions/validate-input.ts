@@ -113,3 +113,20 @@ export function sanitizeNumeric(input: string): string {
   if (!input) return '';
   return input.replace(/\D/g, '');
 }
+
+/**
+ * Validates credit operation input
+ * @param input Credit operation data
+ * @returns Validated and sanitized credit data
+ */
+export function validateCreditOperation(input: any) {
+  if (!input) return { userId: '', totalCredits: 0, usedCredits: 0 };
+  
+  const sanitized = sanitizeUserInput(input);
+  
+  return {
+    userId: sanitized.userId || '',
+    totalCredits: typeof sanitized.totalCredits === 'number' ? sanitized.totalCredits : 0,
+    usedCredits: typeof sanitized.usedCredits === 'number' ? sanitized.usedCredits : 0,
+  };
+}
