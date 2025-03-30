@@ -10,12 +10,12 @@ export const SubscriptionSummary = () => {
   const { planType, setPlanType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
   
   // Base prices without discounts
-  const baseMonthlyPrice = 100.00;
-  const yearlyDiscount = 0.20; // 20% discount
-  const baseYearlyTotal = baseMonthlyPrice * 12 * (1 - yearlyDiscount);
-  const yearlySavings = baseMonthlyPrice * 12 - baseYearlyTotal;
+  const monthlyPrice = 9.99;
+  const yearlyMonthlyPrice = 8.33;
+  const yearlyTotal = yearlyMonthlyPrice * 12;
+  const yearlySavings = (monthlyPrice * 12) - yearlyTotal;
   
-  const currentBasePrice = planType === "monthly" ? baseMonthlyPrice : baseYearlyTotal;
+  const currentBasePrice = planType === "monthly" ? monthlyPrice : yearlyTotal;
 
   // Sanitize plan type to prevent XSS if it comes from URL parameters 
   // or external sources in the future
@@ -59,12 +59,12 @@ export const SubscriptionSummary = () => {
         <div className="space-y-1">
           <div className="flex justify-between">
             <span>Base Plan</span>
-            <span>${planType === "monthly" ? baseMonthlyPrice.toFixed(2) : (baseMonthlyPrice * 12).toFixed(2)} {planType === "monthly" ? "/mo" : "/year"}</span>
+            <span>${planType === "monthly" ? monthlyPrice.toFixed(2) : (monthlyPrice * 12).toFixed(2)} {planType === "monthly" ? "/mo" : "/year"}</span>
           </div>
           
           {planType === "yearly" && (
             <div className="flex justify-between text-primary">
-              <span>Annual discount (20%)</span>
+              <span>Annual discount</span>
               <span>-${yearlySavings.toFixed(2)}</span>
             </div>
           )}

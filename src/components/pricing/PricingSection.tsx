@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +30,10 @@ export function PricingSection() {
   ];
 
   // Pricing constants
-  const monthlyPrice = 100;
-  const yearlyDiscount = 0.20; // 20% discount
-  const yearlyTotal = monthlyPrice * 12 * (1 - yearlyDiscount);
-  const yearlySavings = monthlyPrice * 12 - yearlyTotal;
+  const monthlyPrice = 9.99;
+  const yearlyMonthlyPrice = 8.33;
+  const yearlyTotal = yearlyMonthlyPrice * 12;
+  const yearlySavings = (monthlyPrice * 12) - yearlyTotal;
 
   return (
     <section className="w-full py-12 md:py-24 lg:py-32 bg-background" id="pricing">
@@ -90,7 +89,7 @@ export function PricingSection() {
               onClick={() => setBillingCycle("yearly")}
               className="rounded-full"
             >
-              Yearly <Badge variant={billingCycle === "yearly" ? "default" : "outline"} className={`ml-2 ${billingCycle === "yearly" ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"}`}>Save 20%</Badge>
+              Yearly <Badge variant={billingCycle === "yearly" ? "default" : "outline"} className={`ml-2 ${billingCycle === "yearly" ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"}`}>Save ${yearlySavings.toFixed(2)}</Badge>
             </Button>
           </motion.div>
         </div>
@@ -109,7 +108,7 @@ export function PricingSection() {
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center">
               <div className="flex items-baseline justify-center">
-                <span className="text-5xl font-bold">${billingCycle === "monthly" ? monthlyPrice.toFixed(2) : (yearlyTotal / 12).toFixed(2)}</span>
+                <span className="text-5xl font-bold">${billingCycle === "monthly" ? monthlyPrice.toFixed(2) : yearlyMonthlyPrice.toFixed(2)}</span>
                 <span className="ml-1 text-muted-foreground">/{billingCycle === "monthly" ? "mo" : "mo, billed yearly"}</span>
               </div>
               {billingCycle === "yearly" && (
