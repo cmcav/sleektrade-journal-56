@@ -21,9 +21,14 @@ export const SubscriptionProvider: React.FC<{children: React.ReactNode}> = ({ ch
   } | null>(null);
   const [isFreeSubscription, setIsFreeSubscription] = useState(false);
 
+  // Pricing constants
+  const monthlyPrice = 100.00;
+  const yearlyDiscount = 0.20; // 20% discount
+  const yearlyTotal = monthlyPrice * 12 * (1 - yearlyDiscount);
+
   // Calculate discounted amount
   const calculatePrice = () => {
-    const basePrice = planType === "monthly" ? 9.99 : 95.90;
+    const basePrice = planType === "monthly" ? monthlyPrice : yearlyTotal;
     
     if (discount && discount.valid) {
       const discountAmount = (basePrice * discount.percentage) / 100;

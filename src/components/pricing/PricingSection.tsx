@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,12 @@ export function PricingSection() {
     "Performance reports",
     "Export data to CSV/Excel"
   ];
+
+  // Pricing constants
+  const monthlyPrice = 100;
+  const yearlyDiscount = 0.20; // 20% discount
+  const yearlyTotal = monthlyPrice * 12 * (1 - yearlyDiscount);
+  const yearlySavings = monthlyPrice * 12 - yearlyTotal;
 
   return (
     <section className="w-full py-12 md:py-24 lg:py-32 bg-background" id="pricing">
@@ -102,11 +109,11 @@ export function PricingSection() {
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center">
               <div className="flex items-baseline justify-center">
-                <span className="text-5xl font-bold">$9.99</span>
+                <span className="text-5xl font-bold">${billingCycle === "monthly" ? monthlyPrice.toFixed(2) : (yearlyTotal / 12).toFixed(2)}</span>
                 <span className="ml-1 text-muted-foreground">/{billingCycle === "monthly" ? "mo" : "mo, billed yearly"}</span>
               </div>
               {billingCycle === "yearly" && (
-                <p className="text-sm text-primary font-medium mt-2">$95.90 per year (save $23.98)</p>
+                <p className="text-sm text-primary font-medium mt-2">${yearlyTotal.toFixed(2)} per year (save ${yearlySavings.toFixed(2)})</p>
               )}
               <ul className="mt-6 space-y-3 w-full text-left">
                 {features.map((feature, i) => (

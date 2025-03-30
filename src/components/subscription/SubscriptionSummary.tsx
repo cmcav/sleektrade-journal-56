@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,12 @@ export const SubscriptionSummary = () => {
   const { planType, setPlanType, calculatePrice, discount, isFreeSubscription } = useSubscriptionContext();
   
   // Base prices without discounts
-  const baseMonthlyPrice = 9.99;
-  const baseYearlyPrice = 95.90;
-  const currentBasePrice = planType === "monthly" ? baseMonthlyPrice : baseYearlyPrice;
+  const baseMonthlyPrice = 100.00;
+  const yearlyDiscount = 0.20; // 20% discount
+  const baseYearlyTotal = baseMonthlyPrice * 12 * (1 - yearlyDiscount);
+  const yearlySavings = baseMonthlyPrice * 12 - baseYearlyTotal;
+  
+  const currentBasePrice = planType === "monthly" ? baseMonthlyPrice : baseYearlyTotal;
 
   // Sanitize plan type to prevent XSS if it comes from URL parameters 
   // or external sources in the future
@@ -55,13 +59,13 @@ export const SubscriptionSummary = () => {
         <div className="space-y-1">
           <div className="flex justify-between">
             <span>Base Plan</span>
-            <span>${planType === "monthly" ? baseMonthlyPrice.toFixed(2) : baseYearlyPrice.toFixed(2)} {planType === "monthly" ? "/mo" : "/year"}</span>
+            <span>${planType === "monthly" ? baseMonthlyPrice.toFixed(2) : (baseMonthlyPrice * 12).toFixed(2)} {planType === "monthly" ? "/mo" : "/year"}</span>
           </div>
           
           {planType === "yearly" && (
             <div className="flex justify-between text-primary">
               <span>Annual discount (20%)</span>
-              <span>-$23.98</span>
+              <span>-${yearlySavings.toFixed(2)}</span>
             </div>
           )}
           
