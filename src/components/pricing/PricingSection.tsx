@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +32,8 @@ export function PricingSection() {
   // Pricing constants
   const monthlyPrice = 9.99;
   const yearlyMonthlyPrice = 8.33;
-  const yearlyTotal = 99.96;
-  const yearlySavings = 19.92; // $19.92 savings (monthly*12 - yearly)
+  const yearlyTotal = yearlyMonthlyPrice * 12;
+  const yearlySavings = (monthlyPrice * 12) - yearlyTotal;
 
   return (
     <section className="w-full py-12 md:py-24 lg:py-32 bg-background" id="pricing">
