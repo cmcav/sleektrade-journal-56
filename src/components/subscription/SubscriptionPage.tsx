@@ -348,6 +348,12 @@ const SubscriptionPage = () => {
     }
   };
 
+  // Pricing constants for display
+  const monthlyPrice = 9.99;
+  const yearlyMonthlyPrice = 8.33;
+  const yearlyTotal = 99.96;
+  const yearlySavings = 19.92;
+
   return (
     <>
       <Navbar />
@@ -504,8 +510,8 @@ const SubscriptionPage = () => {
                         <CardContent className="space-y-4">
                           <div className="text-3xl font-bold">
                             ${discount && discount.valid
-                              ? ((9.99 * (100 - discount.percentage)) / 100).toFixed(2)
-                              : "9.99"}
+                              ? ((monthlyPrice * (100 - discount.percentage)) / 100).toFixed(2)
+                              : monthlyPrice.toFixed(2)}
                             <span className="text-sm font-normal text-muted-foreground">
                               /month
                             </span>
@@ -557,14 +563,14 @@ const SubscriptionPage = () => {
                         <CardContent className="space-y-4">
                           <div className="text-3xl font-bold">
                             ${discount && discount.valid
-                              ? ((95.90 * (100 - discount.percentage)) / 100).toFixed(2)
-                              : "95.90"}
+                              ? ((yearlyTotal * (100 - discount.percentage)) / 100).toFixed(2)
+                              : yearlyTotal.toFixed(2)}
                             <span className="text-sm font-normal text-muted-foreground">
                               /year
                             </span>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Equivalent to $7.99/month
+                            Equivalent to ${yearlyMonthlyPrice.toFixed(2)}/month
                           </div>
                           <ul className="space-y-2">
                             <li className="flex items-center">
