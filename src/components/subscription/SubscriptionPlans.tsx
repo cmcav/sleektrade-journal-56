@@ -69,7 +69,7 @@ export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({
             <div>
               <CardTitle>Yearly Plan</CardTitle>
               <CardDescription>
-                Billed annually, save 20%
+                Billed annually, save $23.88
               </CardDescription>
             </div>
             <div className="bg-primary/20 text-primary text-xs font-medium px-2 py-1 rounded-full">
