@@ -23,7 +23,7 @@ export const SubscriptionProvider: React.FC<{children: React.ReactNode}> = ({ ch
 
   // Pricing constants
   const monthlyPrice = 9.99;
-  const yearlyMonthlyPrice = 8.33;
+  const yearlyMonthlyPrice = 8.00;
   const yearlyTotal = yearlyMonthlyPrice * 12;
 
   // Calculate discounted amount

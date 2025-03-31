@@ -557,14 +557,14 @@ const SubscriptionPage = () => {
                         <CardContent className="space-y-4">
                           <div className="text-3xl font-bold">
                             ${discount && discount.valid
-                              ? ((95.90 * (100 - discount.percentage)) / 100).toFixed(2)
-                              : "95.90"}
+                              ? ((96.00 * (100 - discount.percentage)) / 100).toFixed(2)
+                              : "96.00"}
                             <span className="text-sm font-normal text-muted-foreground">
                               /year
                             </span>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Equivalent to $7.99/month
+                            Equivalent to $8.00/month
                           </div>
                           <ul className="space-y-2">
                             <li className="flex items-center">
