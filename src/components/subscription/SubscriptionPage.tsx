@@ -494,14 +494,14 @@ const SubscriptionPage = () => {
 
                   <TabsContent value="plans" className="space-y-6">
                     <div className="grid gap-6 md:grid-cols-2">
-                      <Card className={planType === "monthly" ? "border-primary" : ""}>
+                      <Card className={`flex flex-col ${planType === "monthly" ? "border-primary" : ""}`}>
                         <CardHeader>
                           <CardTitle>Monthly Plan</CardTitle>
                           <CardDescription>
                             Billed monthly, cancel anytime
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="flex-grow space-y-4">
                           <div className="text-3xl font-bold">
                             ${discount && discount.valid
                               ? ((9.99 * (100 - discount.percentage)) / 100).toFixed(2)
@@ -529,7 +529,7 @@ const SubscriptionPage = () => {
                             </li>
                           </ul>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="mt-auto">
                           <Button
                             className="w-full"
                             variant={planType === "monthly" ? "default" : "outline"}
@@ -540,7 +540,7 @@ const SubscriptionPage = () => {
                         </CardFooter>
                       </Card>
 
-                      <Card className={planType === "yearly" ? "border-primary" : ""}>
+                      <Card className={`flex flex-col ${planType === "yearly" ? "border-primary" : ""}`}>
                         <CardHeader>
                           <div className="flex justify-between items-start">
                             <div>
@@ -554,7 +554,7 @@ const SubscriptionPage = () => {
                             </div>
                           </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="flex-grow space-y-4">
                           <div className="text-3xl font-bold">
                             ${discount && discount.valid
                               ? ((96.00 * (100 - discount.percentage)) / 100).toFixed(2)
@@ -589,7 +589,7 @@ const SubscriptionPage = () => {
                             </li>
                           </ul>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="mt-auto">
                           <Button
                             className="w-full"
                             variant={planType === "yearly" ? "default" : "outline"}
