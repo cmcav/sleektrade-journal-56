@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,9 +30,9 @@ export function PricingSection() {
     "Export data to CSV/Excel"
   ];
 
-  // Pricing constants
+  // Updated pricing constants
   const monthlyPrice = 9.99;
-  const yearlyMonthlyPrice = 8.33;
+  const yearlyMonthlyPrice = 8.00;
   const yearlyTotal = yearlyMonthlyPrice * 12;
   const yearlySavings = (monthlyPrice * 12) - yearlyTotal;
 
@@ -134,4 +135,4 @@ export function PricingSection() {
       </div>
     </section>
   );
-}
+};
