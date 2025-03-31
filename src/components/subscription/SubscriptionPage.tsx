@@ -493,7 +493,7 @@ const SubscriptionPage = () => {
                   </TabsList>
 
                   <TabsContent value="plans" className="space-y-6">
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid gap-6 md:grid-cols-3">
                       <Card className={`flex flex-col ${planType === "monthly" ? "border-primary" : ""}`}>
                         <CardHeader>
                           <CardTitle>Monthly Plan</CardTitle>
@@ -596,6 +596,64 @@ const SubscriptionPage = () => {
                             onClick={() => setPlanType("yearly")}
                           >
                             {planType === "yearly" ? "Selected" : "Select Plan"}
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                      
+                      <Card className="flex flex-col">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle>Enterprise</CardTitle>
+                              <CardDescription>
+                                Custom solutions for teams
+                              </CardDescription>
+                            </div>
+                            <div className="bg-blue-500/20 text-blue-500 text-xs font-medium px-2 py-1 rounded-full">
+                              Custom
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-4">
+                          <div className="text-3xl font-bold">
+                            Custom
+                            <span className="text-sm font-normal text-muted-foreground">
+                              /year
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Contact us for pricing
+                          </div>
+                          <ul className="space-y-2">
+                            <li className="flex items-center">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                              <span className="text-sm">Unlimited AI strategy generations</span>
+                            </li>
+                            <li className="flex items-center">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                              <span className="text-sm">Advanced team analytics</span>
+                            </li>
+                            <li className="flex items-center">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                              <span className="text-sm">Dedicated account manager</span>
+                            </li>
+                            <li className="flex items-center">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                              <span className="text-sm">API access</span>
+                            </li>
+                            <li className="flex items-center">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                              <span className="text-sm font-medium">Custom integrations</span>
+                            </li>
+                          </ul>
+                        </CardContent>
+                        <CardFooter className="mt-auto">
+                          <Button
+                            className="w-full"
+                            variant="outline"
+                            onClick={() => window.location.href = "/contact"}
+                          >
+                            Contact Sales
                           </Button>
                         </CardFooter>
                       </Card>
